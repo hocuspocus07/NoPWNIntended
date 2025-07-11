@@ -1,17 +1,20 @@
-import { SidebarProvider} from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/AppSidebar"
 import "./globals.css"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+      <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen flex">
-        <SidebarProvider>
-          <AppSidebar />
-            <main className="flex-1 p-4">
-              {children}
-            </main>
-        </SidebarProvider>
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster/>
+          </ThemeProvider>
       </body>
     </html>
   )
