@@ -43,7 +43,7 @@ const nacelle = localFont({
 });
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const showHeader = !pathname.startsWith("/dashboard");
+  const showHeader = !pathname.startsWith("/dashboard") && !pathname.startsWith("/account");
   return (
       <html lang="en" suppressHydrationWarning>
       <body

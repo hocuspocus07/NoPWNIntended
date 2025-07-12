@@ -7,7 +7,7 @@ import Testimonials from "@/components/landing-components/testimonials";
 import Cta from "@/components/landing-components/cta";
 export default function Home() {
   return (
-    <div className="w-screen">
+    <div className="w-screen custom-scroll">
       <PageIllustration />
       <HeroHome />
       <Workflows />

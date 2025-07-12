@@ -11,13 +11,17 @@ export function SidebarPopover({
   title,
   icon: Icon,
   children,
+  open,
+  onOpenChange,
 }: {
   title: string
   icon: React.ComponentType<{ className?: string }>
   children: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger className="flex items-center justify-center p-2 rounded-md hover:bg-accent">
         <Icon className="h-5 w-5" />
       </PopoverTrigger>

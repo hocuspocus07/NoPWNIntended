@@ -16,12 +16,14 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { Avatar } from "@radix-ui/react-avatar"
 import { useState } from "react"
 
 export default function Page() {
   const [activeTool, setActiveTool] = useState<string | null>(null)
-    const [activeToolTitle, setActiveToolTitle] = useState<string | null>(null)
+  const [activeToolTitle, setActiveToolTitle] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const handleToolSelect = (category: string, toolId: string, toolTitle: string) => {
     setActiveCategory(category)
     setActiveTool(toolId)
@@ -29,13 +31,13 @@ export default function Page() {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       <AppSidebar
-  activeTool={activeTool}
-  onToolSelect={handleToolSelect}
-/>
+        activeTool={activeTool}
+        onToolSelect={handleToolSelect}
+      />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <header className="flex text-foreground h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator
@@ -67,10 +69,12 @@ export default function Page() {
                 )}
               </BreadcrumbList>
             </Breadcrumb>
-
+            <div className="ml-auto flex items-center gap-2">
+              <Avatar />
+            </div>
           </div>
         </header>
-      <MainSection activeTool={activeTool} activeToolTitle={activeToolTitle} />
+        <MainSection activeTool={activeTool} activeToolTitle={activeToolTitle} />
       </SidebarInset>
     </SidebarProvider>
   )

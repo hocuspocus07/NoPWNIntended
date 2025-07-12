@@ -16,7 +16,7 @@ export function OutputPanel({ output, isLoading }: {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col text-foreground">
       <div className="flex items-center justify-between border-b p-4">
         <h3 className="font-semibold">Scan Results</h3>
         <Button 

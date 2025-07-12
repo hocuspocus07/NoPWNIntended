@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  User,
   BadgeCheck,
   Bell,
   ChevronsUpDown,
@@ -29,7 +30,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-
+import { AccountTabs } from "./account-tabs"
+import { AnimatePresence, motion } from "framer-motion"
+import { useState, useEffect } from "react"
+import { toast } from "sonner"
 export function NavUser({
   user,
 }: {
@@ -40,8 +44,13 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const [showTabs, setShowTabs] = useState(false)
 
+  const proClicked = () => {
+    toast("Pro feature coming soon!")
+  }
   return (
+    <>
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
@@ -81,24 +90,16 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={proClicked}>
                 <Sparkles />
                 Upgrade to Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
+              <DropdownMenuItem onClick={() => setShowTabs(true)}>
+                <User className="mr-2 h-4 w-4" />
+                Account Settings
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -110,5 +111,14 @@ export function NavUser({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+    <AnimatePresence>
+        {showTabs && (
+          <AccountTabs 
+            onBack={() => setShowTabs(false)} 
+            asOverlay={true}
+          />
+        )}
+      </AnimatePresence>
+      </>
   )
 }

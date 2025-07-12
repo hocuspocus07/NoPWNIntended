@@ -11,6 +11,7 @@ import { SqlInjectionScanner } from "./tools/sqli-scanner"
 import { XssTester } from "./tools/xss-tester"
 import { EncoderDecoder } from "./tools/encoder-decoder"
 import { HashCracker } from "./tools/hash-cracker"
+import { JwtTool } from "./tools/jwt-encoder-decoder"
 interface ToolOptionsProps {
     activeTool: string | null
     onRegisterScan: (scanFn: () => Promise<string>) => void
@@ -78,11 +79,10 @@ function ToolOptions({ activeTool, onRegisterScan }: ToolOptionsProps) {
 
     const handleEncoderDecoderOutput = (output: string) => {
         console.log("Encoder/Decoder output:", output)
-        // You can add additional logic here to handle the output
     }
 
     return (
-        <div>
+        <div className="text-foreground">
             {activeTool === "port-scanner" && (
                 <NmapPanel
                     target="192.168.1.1"
@@ -98,6 +98,7 @@ function ToolOptions({ activeTool, onRegisterScan }: ToolOptionsProps) {
             {activeTool === "xss-tester" && <XssTester /> }
             {activeTool === "encoder/decoder" && <EncoderDecoder onOutputChange={handleEncoderDecoderOutput} />}
             {activeTool==="hash-cracker" && <HashCracker onOutputChange={handleEncoderDecoderOutput} />}
+            {activeTool==="jwt-encoder/decoder" && <JwtTool/>}
             {!activeTool && <div>Select a tool from the sidebar</div>}
         </div>
     )
