@@ -1,5 +1,7 @@
+"use client"
 import Image from "next/image";
 import { Button } from "../ui/button";
+import { motion } from "framer-motion";
 
 export default function Cta() {
   return (
@@ -12,29 +14,35 @@ export default function Cta() {
       </div>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="bg-linear-to-r from-transparent via-gray-800/50 py-12 md:py-20">
-          <div className="mx-auto max-w-3xl text-center">
+          <motion.div
+            className="mx-auto max-w-3xl text-center"
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            viewport={{ once: true }}
+          >
             <h2
-              className="animate-[gradient_6s_linear_infinite] bg-[linear-gradient(to_right,var(--color-gray-200),var(--color-indigo-200),var(--color-gray-50),var(--color-indigo-300),var(--color-gray-200))] bg-[length:200%_auto] bg-clip-text pb-8 font-nacelle text-3xl font-semibold text-transparent md:text-4xl"
+              className="animate-[gradient_6s_linear_infinite] bg-[linear-gradient(to_right,var(--color-gray-200),var(--color-indigo-200),var(--color-gray-50),var(--color-indigo-300),var(--color-gray-200))] bg-[length:200%_auto] bg-clip-text pb-8 font-nacelle text-3xl font-extrabold text-transparent md:text-4xl"
               data-aos="fade-up"
             >
-              Ready to level up your security assessments?
+              Ready to Elevate Your Security Game?
             </h2>
-            <p className="mb-8 text-indigo-200/70">
-              Start using the all-in-one pentesting toolkit trusted by professionals.
+            <p className="mb-8 text-indigo-200/80 font-inter">
+              Join thousands of professionals using the most advanced pentesting toolkit. <span className="font-semibold text-indigo-300">Start your journey today!</span>
             </p>
-            <div className="mx-auto max-w-xs sm:flex sm:max-w-none sm:justify-center">
-              <div data-aos="fade-up" data-aos-delay={400}>
-                <Button className="btn group mb-4 w-full">
-                  <span className="...">Get Started</span>
+            <div className="mx-auto max-w-xs sm:flex sm:max-w-none sm:justify-center gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                viewport={{ once: true }}
+              >
+                <Button variant="outline" className="w-full font-inter">
+                  Get Started
                 </Button>
-              </div>
-              <div data-aos="fade-up" data-aos-delay={600}>
-                <Button variant="outline" className="w-full">
-                  Book a Demo
-                </Button>
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

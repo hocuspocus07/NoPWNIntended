@@ -173,3 +173,6 @@
   background-color: hsl(var(--background));
   border: 1px solid hsl(var(--border));
 }
+.font-nacelle {
+  font-family: var(--font-nacelle), sans-serif;
+}
