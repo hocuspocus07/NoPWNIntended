@@ -92,7 +92,7 @@ export default function UsageTab() {
 
       {/* Main Chart Tabs */}
       <Tabs defaultValue="activity" className="space-y-4">
-        <TabsList>
+        <TabsList className="w-full h-auto flex items-center justify-center">
           <TabsTrigger value="activity">
             <Calendar className="h-4 w-4 mr-2" />
             Activity

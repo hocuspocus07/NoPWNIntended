@@ -38,7 +38,7 @@ function ProfileTab() {
         </div>
 
         <div className="flex justify-end pt-4">
-          <Button>Save Changes</Button>
+          <Button variant="success">Save Changes</Button>
         </div>
       </div>
     </div>

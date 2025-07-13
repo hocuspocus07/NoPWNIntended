@@ -17,8 +17,8 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6 w-2/3 mx-auto mt-2 py-2 px-4 rounded-xl bg-black/90">     
-             <Image src="/images/icon-no-bg.png" alt="Icon" width={48} height={40} className="h-10 w-10" />
           <Link href="/" className="font-bold text-lg flex items-center gap-2">
+             <Image src="/images/icon-no-bg.png" alt="Icon" width={48} height={40} className="h-10 w-10" />
             <span>NoPwnIntended</span>
           </Link>
           <div className="flex-1" />
