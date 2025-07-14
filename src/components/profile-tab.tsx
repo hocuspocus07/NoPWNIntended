@@ -43,12 +43,22 @@ function ProfileTab() {
       if (avatarFile) {
         const user = (await supabase.auth.getUser()).data.user
         if (!user) throw new Error('No user found')
+
+        // 1. Delete previous avatar if it exists and is a Supabase Storage URL
+        if (user.user_metadata?.avatar_url) {
+          // Extract the path from the public URL
+          const prevUrl = user.user_metadata.avatar_url
+          // Match for 'avatars/<filename>' in the URL
+          const match = prevUrl.match(/avatars\/([^?]+)/)
+          if (match && match[1]) {
+            await supabase.storage.from('avatars').remove([`avatars/${match[1]}`])
+          }
+        }
+        // 2. Upload new avatar with a unique name
         const fileExt = avatarFile.name.split('.').pop()
-        const filePath = `avatars/${user.id}.${fileExt}`
-        // Upload to Supabase Storage (bucket 'avatars' must exist)
+        const filePath = `avatars/${user.id}-${Date.now()}.${fileExt}`
         const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile, { upsert: true })
         if (uploadError) throw uploadError
-        // Get public URL
         const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
         newAvatarUrl = data.publicUrl
       }
