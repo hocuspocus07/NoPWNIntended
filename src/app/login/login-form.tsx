@@ -1,3 +1,4 @@
+"use client"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,11 +11,41 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-
+import { useState } from "react"
+import { supabase } from '@/utils/supabase/client';
+import {toast} from 'sonner'
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [formError, setFormError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setFormError(null)
+    
+    const formData = new FormData(e.currentTarget)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+
+    // Use Supabase client SDK for login
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (error) {
+      toast.error(error.message)
+      setFormError(error.message)
+      setIsSubmitting(false)
+      return
+    }
+
+    toast.success("Logged in successfully!")
+    // Redirect to dashboard
+    window.location.href = '/dashboard'
+    setIsSubmitting(false)
+  }
+// ... existing code ...
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -25,7 +56,7 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form onSubmit={handleSubmit}>
             <div className="grid gap-6">
               <div className="flex flex-col gap-4">
                 <Button variant="outline" className="w-full">
@@ -58,6 +89,7 @@ export function LoginForm({
                   <Input
                     id="email"
                     type="email"
+                    name="email"
                     placeholder="m@example.com"
                     required
                   />
@@ -72,7 +104,7 @@ export function LoginForm({
                       Forgot your password?
                     </a>
                   </div>
-                  <Input id="password" type="password" required />
+                  <Input id="password" type="password" name="password" required />
                 </div>
                 <Button type="submit" className="w-full">
                   Login

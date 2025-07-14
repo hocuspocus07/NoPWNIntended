@@ -14,7 +14,9 @@ import { useEffect, useState } from "react"
 import { Progress } from "@/components/ui/progress"
 import { debounce } from "lodash"
 import { Check } from "lucide-react"
-
+import { signup } from "../login/actions"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 export function RegisterForm({
     className,
     ...props
@@ -24,7 +26,9 @@ export function RegisterForm({
     const [passwordMatch, setPasswordMatch] = useState(true)
     const [passwordStrength, setPasswordStrength] = useState(0)
     const [passwordSuggestions, setPasswordSuggestions] = useState<string[]>([])
-
+    const [formError, setFormError] = useState<string | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const router = useRouter()
     // const [email, setEmail] = useState("")
     // const [emailValid, setEmailValid] = useState<boolean | null>(null)
     // const [emailChecking, setEmailChecking] = useState(false)
@@ -54,6 +58,31 @@ export function RegisterForm({
         setPasswordStrength(strength)
         setPasswordSuggestions(suggestions)
     }, [password])
+    const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setFormError(null)
+    setIsSubmitting(true)
+
+    const formData = new FormData(e.currentTarget)
+
+    const password = formData.get("password") as string
+    const confirmPassword = formData.get("confirm-password") as string
+
+    if (password !== confirmPassword || passwordStrength < 50) {
+        setFormError("Please fix password issues before submitting")
+        setIsSubmitting(false)
+        return
+    }
+
+    const result = await signup(formData)
+
+    if (result?.success) {
+        router.push("/login")
+        toast("User Registered successfully")
+    }
+
+    setIsSubmitting(false)
+}
 
     //email checker
     // const isValidEmailFormat = (email: string) => {
@@ -118,7 +147,7 @@ export function RegisterForm({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form>
+<form onSubmit={onSubmit}>
                         <div className="grid gap-6">
                             <div className="flex flex-col gap-4">
                                 <Button variant="outline" className="w-full">
@@ -151,6 +180,7 @@ export function RegisterForm({
                                     <Input
                                         id="name"
                                         type="text"
+                                        name="name"
                                         placeholder="John Doe"
                                         required
                                     />
@@ -160,6 +190,7 @@ export function RegisterForm({
                                     <div className="relative">
                                         <Input
                                             id="email"
+                                            name="email"
                                             type="email"
                                             placeholder="m@example.com"
                                             required
@@ -183,6 +214,7 @@ export function RegisterForm({
                                         <Input
                                             id="password"
                                             type="password"
+                                            name="password"
                                             required
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
@@ -206,6 +238,7 @@ export function RegisterForm({
                                         <Input
                                             id="confirm-password"
                                             type="password"
+                                            name="confirm-password"
                                             required
                                             value={confirmPassword}
                                             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -214,14 +247,16 @@ export function RegisterForm({
                                             <div className="text-xs text-destructive">Passwords do not match</div>
                                         )}
                                     </div>
+                                    {formError && (
+                                        <div className="text-sm text-destructive">{formError}</div>
+                                    )}
+
                                     <Button
                                         type="submit"
                                         className="w-full"
-                                        disabled={!passwordMatch || passwordStrength < 50
-                                            // || !emailValid
-                                        }
+                                        disabled={isSubmitting || !passwordMatch || passwordStrength < 50}
                                     >
-                                        Create Account
+                                        {isSubmitting ? "Creating account..." : "Create Account"}
                                     </Button>
                                 </div>
                             </div>

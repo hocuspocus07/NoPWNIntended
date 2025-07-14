@@ -1,15 +1,10 @@
-"use client"
-
 import * as React from "react"
-import { useState } from "react"
 import {
   ScanSearch, ShieldAlert, Bug, Code2, Network,
-  Wifi, Key, Fingerprint, Settings, Shield
 } from "lucide-react"
 import { useSidebar } from "@/components/ui/sidebar"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
 import Image from "next/image"
 import {
   Sidebar,
@@ -18,13 +13,9 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { redirect } from "next/navigation"
 
 const data = {
-  user: {
-    name: "SecurityUser",
-    email: "user@nopwnintended.com",
-    avatar: "/images/client-logo-01.svg",
-  },
   teams: [
     {
       name: "Red Team",
@@ -123,9 +114,13 @@ export function AppSidebar({
     }))
   }))
 
+  const iconClicked = () => {
+    redirect('/')
+  }
+
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="flex items-center justify-start h-16">
+      <SidebarHeader className="flex items-center justify-start h-16" onClick={iconClicked}>
         {collapsed ? (
           <Image src="/images/icon-no-bg.png" alt="Icon" width={48} height={40} />
         ) : (<div className="flex h-full w-full items-center justify-center ml-2">
@@ -143,7 +138,7 @@ export function AppSidebar({
         />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser/>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
