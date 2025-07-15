@@ -110,7 +110,7 @@ export function NavUser() {
 
   return (
     <>
-      <SidebarMenu>
+      <SidebarMenu className="mb-1">
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -119,20 +119,17 @@ export function NavUser() {
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <AvatarShad className="h-8 w-8 rounded-lg">
-                  <Avatar
-                    uid={user?.id ?? null}
-                    url={avatar_url}
-                    size={150}
-                    onUpload={(url) => {
-                      setAvatarUrl(url)
-                      window.dispatchEvent(new Event('profile-updated'))
-                    }}
-                  />
+                  <AvatarShad className="h-full w-full">
+                    <AvatarImage src={avatar_url || ""} />
+                    <AvatarFallback className="rounded-lg">
+                      {fullname?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </AvatarShad>
                   <AvatarFallback className="rounded-lg">
                     {fullname?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </AvatarShad>
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid flex-1 text-left text-lg leading-tight">
                   <span className="truncate font-medium">{loading ? "Loading..." : fullname || "User"}</span>
                   <span className="truncate text-xs">{loading ? "..." : email}</span>
                 </div>
@@ -145,7 +142,7 @@ export function NavUser() {
               align="end"
               sideOffset={4}
             >
-              <DropdownMenuLabel className="p-0 font-normal">
+              <DropdownMenuLabel className="p-0 font-bold text-2xl">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <AvatarShad className="h-8 w-8 rounded-lg">
                     <AvatarImage src={avatar_url || ""} alt={fullname || ""} />
@@ -153,7 +150,7 @@ export function NavUser() {
                       {fullname?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </AvatarShad>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="grid flex-1 text-left text-lg leading-tight">
                     <span className="truncate font-medium">{fullname || "User"}</span>
                     <span className="truncate text-xs">{email}</span>
                   </div>

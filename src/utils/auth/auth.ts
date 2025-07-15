@@ -17,6 +17,21 @@ export const authWithGithub = async () => {
   return redirect(data.url);
 };
 
+export const signInWithMagicLink = async (formData: FormData) => {
+  const email = formData.get("email") as string;
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    },
+  });
+  if (error) return { error: error.message };
+  return { success: true, message: "Check your email for the magic link" };
+};
+
+export const signUpWithMagicLink = signInWithMagicLink;
+
 // Sign up with email/password
 export const signUpWithEmail = async (formData: FormData) => {
   const email = formData.get("email") as string;

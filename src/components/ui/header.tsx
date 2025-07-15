@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-
+import { useRef } from "react"
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -49,7 +49,21 @@ export default function Navbar() {
     setUser(null)
     window.location.href = '/login'
   }
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+const menuButtonRef = useRef<HTMLButtonElement>(null)
 
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        menuButtonRef.current && 
+        !menuButtonRef.current.contains(e.target as Node)
+      ) {
+        setMobileMenuOpen(false)
+      }
+    }
+    if (mobileMenuOpen) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [mobileMenuOpen])
   return (
     <header className="sticky top-0 z-50 w-full bg-black/90 backdrop-blur border-b border-gray-800">
       <nav className="flex items-center justify-between h-16 px-4 md:px-8">
@@ -64,20 +78,20 @@ export default function Navbar() {
           {loading ? null : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 focus:outline-none group">
+                <button className="flex items-center gap-2 focus:outline-none group bg-gray-700 px-2 py-1 rounded-lg">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.user_metadata?.avatar_url || undefined} />
                     <AvatarFallback>{user.user_metadata?.name?.charAt(0) || user.email?.charAt(0) || 'U'}</AvatarFallback>
                   </Avatar>
-                  <span className="text-white text-sm group-hover:underline">{user.user_metadata?.name || user.email}</span>
+                  <span className="text-white text-md font-bold group-hover:cursor-pointer">{user.user_metadata?.name || user.email}</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[180px]">
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard">Dashboard</Link>
+                  <Link href="/dashboard" className="hover:cursor-pointer">Dashboard</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
+                <DropdownMenuItem onClick={handleSignOut} className="hover:cursor-pointer">
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -96,51 +110,62 @@ export default function Navbar() {
 
         {/* Mobile Navigation */}
         <div className="flex md:hidden items-center justify-end flex-1">
-          {loading ? null : user ? (
+          {loading ? null : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="focus:outline-none">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={user.user_metadata?.avatar_url || undefined} />
-                    <AvatarFallback>{user.user_metadata?.name?.charAt(0) || user.email?.charAt(0) || 'U'}</AvatarFallback>
-                  </Avatar>
-                </button>
+                {user ? (
+                  <button className="focus:outline-none">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user.user_metadata?.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {user.user_metadata?.name?.charAt(0) || user.email?.charAt(0) || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                ) : (
+                  <Button variant="outline" size="icon" className="md:hidden">
+                    <Menu className="h-5 w-5 text-white" />
+                  </Button>
+                )}
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={8} className="w-screen max-w-full left-0 !right-0 rounded-none shadow-none bg-white text-black p-0 border-t border-gray-200">
-                <DropdownMenuItem asChild className="w-full justify-center py-4 text-lg">
-                  <Link href="/dashboard">Dashboard</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="w-full justify-center py-4 text-lg">
-                  Sign Out
-                </DropdownMenuItem>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="mt-2 p-0 w-screen shadow-lg rounded-xl overflow-hidden border bg-black text-foregound"
+                style={{ minWidth: 250 }}
+              >
+                {/* Menu header */}
+                <div className="p-4 border-b">
+                  <span className="font-bold text-lg">Menu</span>
+                </div>
+                {/* Dropdown items */}
+                <div className="flex flex-col py-2">
+                  {user ? (
+                    <>
+                      <DropdownMenuItem asChild className="text-md px-4 py-3 font-medium flex justify-center items-center">
+                        <Link href="/dashboard">Dashboard</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="flex justify-center items-center text-md px-4 py-3 text-red-600 font-medium cursor-pointer"
+                        onClick={handleSignOut}
+                      >
+                        Sign Out
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem asChild className="text-md px-4 py-3 flex justify-center items-center font-medium rounded-lg">
+                        <Link href="/login">Login</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="text-md px-4 flex justify-center items-center py-3 font-medium rounded-lg bg-blue-600 hover:bg-blue-700 focus:bg-blue-700  m-1 transition-all cursor-pointer">
+                        <Link href="/register">Sign Up</Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu className="h-5 w-5 text-white" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="top"
-                className="w-full max-w-full rounded-none shadow-none bg-white text-black p-0 border-t border-gray-200"
-                style={{ backdropFilter: 'none', background: 'white' }}
-              >
-                <SheetHeader>
-                  <SheetTitle className="text-lg font-bold text-gray-900">Menu</SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col gap-4 pt-6 px-4">
-                  <Button variant="outline" className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-600" asChild>
-                    <Link href="/login">Login</Link>
-                  </Button>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0" asChild>
-                    <Link href="/register">Sign Up</Link>
-                  </Button>
-                </nav>
-              </SheetContent>
-            </Sheet>
           )}
         </div>
       </nav>

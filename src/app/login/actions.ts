@@ -61,7 +61,12 @@ export async function signup(formData: FormData) {
       options: { data: { name } }
     })
 
-  if (authError) throw new Error(authError.message)
+    if (authError) {
+      if (authError.code === "user_already_exists" || authError.code === "email_exists") {
+        return { error: "duplicate" };
+      }
+      return { authError: authError.message };
+    }
 
   // 2. Create public user record
   if (authData.user) {
