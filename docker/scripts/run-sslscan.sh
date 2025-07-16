@@ -23,11 +23,11 @@ for ver in "${VLIST[@]}"; do
 done
 
 # Options
-[[ "$CERTS" == "true" ]]       && CMD="$CMD --cert"
-[[ "$HEARTBLEED" == "true" ]]  && CMD="$CMD --heartbleed"
-[[ "$COMPRESSION" == "true" ]] && CMD="$CMD --compression"
-[[ "$FALLBACK" == "true" ]]    && CMD="$CMD --fallback"
-[[ "$SIGNATURES" == "true" ]]  && CMD="$CMD --sig"
+[[ "${CERTS,,}" == "true" ]]       && CMD="$CMD --cert"
+[[ "${HEARTBLEED,,}" == "true" ]]  && CMD="$CMD --heartbleed"
+[[ "${COMPRESSION,,}" == "true" ]] && CMD="$CMD --compression"
+[[ "${FALLBACK,,}" == "true" ]]    && CMD="$CMD --fallback"
+[[ "${SIGNATURES,,}" == "true" ]]  && CMD="$CMD --sig"
 
 CMD="$CMD $TARGET"
 

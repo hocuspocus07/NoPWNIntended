@@ -26,7 +26,7 @@ if [[ -n "$EXTENSIONS" ]]; then
   CMD="$CMD -e .$EXTENSIONS"
 fi
 
-[[ "$RECURSIVE" == "true" ]] && CMD="$CMD -recursion"
-[[ "$FOLLOW_REDIRECTS" == "true" ]] && CMD="$CMD -r"
+[[ "${RECURSIVE,,}" == "true" ]] && CMD="$CMD -recursion"
+[[ "${FOLLOW_REDIRECTS,,}" == "true" ]] && CMD="$CMD -r"
 
 eval "$CMD"

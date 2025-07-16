@@ -15,6 +15,6 @@ esac
 CMD="gobuster dir -u $URL -w $WORDLIST -t $THREADS"
 
 [[ -n "$EXTENSIONS" ]] && CMD="$CMD -x $EXTENSIONS"
-[[ "$FOLLOW_REDIRECTS" == "true" ]] && CMD="$CMD -r"
+[[ "${FOLLOW_REDIRECTS,,}" == "true" ]] && CMD="$CMD -r"
 
 eval "$CMD"

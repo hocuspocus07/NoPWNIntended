@@ -53,3 +53,5 @@ RUN echo "=== Tool Verification ===" && \
     echo "All essential tools verified"
 
 RUN echo -e "\n\nNote: For NoSQLMap, use the official Docker image:\ndocker run -it codingo/nosqlmap\n" >> /root/README.md
+
+COPY docker/scripts/ /docker/scripts/

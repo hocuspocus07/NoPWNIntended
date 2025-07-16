@@ -6,7 +6,7 @@ AGGRESSIVE=$3
 
 WPSCAN_OPTS="--url $TARGET"
 
-if [[ "$SCAN_HIDDEN" == "true" ]]; then
+if [[ "${SCAN_HIDDEN,,}" == "true" ]]; then
   WPSCAN_OPTS="$WPSCAN_OPTS --enumerate u vp vt"
 fi
 

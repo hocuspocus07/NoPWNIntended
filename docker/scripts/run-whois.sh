@@ -4,7 +4,7 @@ DOMAIN=$1
 RECURSIVE=$2      # "true" or "false"
 RAW=$3            # "true" or "false"
 
-if [[ "$RAW" == "true" ]]; then
+if [[ "${RAW,,}" == "true" ]]; then
   whois "$DOMAIN"
 else
   # Filtered output
@@ -18,7 +18,7 @@ else
   echo "Name Servers:"
   echo "$OUTPUT" | grep -iE 'name server' | awk '{print $NF}' | sort -u
 
-  if [[ "$RECURSIVE" == "true" ]]; then
+  if [[ "${RECURSIVE,,}" == "true" ]]; then
     echo -e "\n>>> Recursive WHOIS Lookup (Registrar WHOIS Server):"
     REGWHOIS=$(echo "$OUTPUT" | grep -iE "whois server" | awk '{print $NF}' | head -n 1)
 

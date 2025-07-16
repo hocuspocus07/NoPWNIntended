@@ -14,7 +14,7 @@ for p in "${PLIST[@]}"; do
 done
 
 # Add mode
-if [[ "$MODE" == "exploit" ]]; then
+if [[ "${MODE,,}" == "exploit" ]]; then
   CMD="$CMD --dump"
 fi
 

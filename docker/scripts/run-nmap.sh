@@ -8,7 +8,7 @@ SCRIPTS=$4        # e.g. "vulners,http-headers" (comma-separated)
 CMD="nmap $SCAN_OPTS"
 
 # Handle ports
-if [[ "$PORTS" == "top-ports" ]]; then
+if [[ "${PORTS,,}" == "top-ports" ]]; then
   CMD="$CMD --top-ports 100"
 elif [[ -n "$PORTS" ]]; then
   CMD="$CMD -p $PORTS"

@@ -36,7 +36,7 @@ declare -A WORDLISTS=(
 )
 
 # Auto-detect hash type if needed
-if [[ "$HASH_TYPE" == "auto" ]]; then
+if [[ "${HASH_TYPE,,}" == "auto" ]]; then
   HASH_LEN=${#HASH}
   case $HASH_LEN in
     32) HASH_TYPE="0" ;;     # MD5
@@ -63,7 +63,7 @@ fi
 [[ -n "$RULES_FILE" ]] && CMD="$CMD -r $RULES_FILE"
 
 # Potfile handling
-[[ "$USE_POTFILE" == "true" ]] && CMD="$CMD --potfile-path hashcat.potfile"
+[[ "${USE_POTFILE,,}" == "true" ]] && CMD="$CMD --potfile-path hashcat.potfile"
 
 # Add the hash
 CMD="$CMD '$HASH'"

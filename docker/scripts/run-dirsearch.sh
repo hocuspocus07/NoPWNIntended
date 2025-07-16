@@ -15,7 +15,7 @@ esac
 
 CMD="python3 /opt/dirsearch/dirsearch.py -u $URL -e $EXTENSIONS -w $WORDLIST -t $THREADS"
 
-[[ "$RECURSIVE" == "true" ]] && CMD="$CMD -r"
-[[ "$FOLLOW_REDIRECTS" == "true" ]] && CMD="$CMD --follow-redirects"
+[[ "${RECURSIVE,,}" == "true" ]] && CMD="$CMD -r"
+[[ "${FOLLOW_REDIRECTS,,}" == "true" ]] && CMD="$CMD --follow-redirects"
 
 eval "$CMD"

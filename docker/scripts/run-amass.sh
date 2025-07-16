@@ -7,15 +7,15 @@ THREADS=$5          # integer
 
 CMD="amass enum -d $DOMAIN"
 
-if [[ "$PASSIVE" == "true" ]]; then
+if [[ "${PASSIVE,,}" == "true" ]]; then
   CMD="$CMD -passive"
 fi
 
-if [[ "$ACTIVE" == "true" ]]; then
+if [[ "${ACTIVE,,}" == "true" ]]; then
   CMD="$CMD -active"
 fi
 
-if [[ "$BRUTEFORCE" == "true" ]]; then
+if [[ "${BRUTEFORCE,,}" == "true" ]]; then
   CMD="$CMD -brute"
 fi
 

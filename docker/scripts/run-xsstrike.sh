@@ -20,12 +20,12 @@ case "$XSS_TYPE" in
 esac
 
 # Add scan type
-if [[ "$SCAN_TYPE" == "payload" ]]; then
+if [[ "${SCAN_TYPE,,}" == "payload" ]]; then
   CMD="$CMD --fuzzer"
 fi
 
 # URL Encode
-[[ "$ENCODE" == "true" ]] && CMD="$CMD --encode"
+[[ "${ENCODE,,}" == "true" ]] && CMD="$CMD --encode"
 
 # Parameters to test
 IFS=',' read -ra PARAM_LIST <<< "$PARAMS"
