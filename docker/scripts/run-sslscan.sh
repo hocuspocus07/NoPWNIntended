@@ -1,28 +1,22 @@
 #!/bin/bash
 
-TARGET=$1            
-STARTTLS=$2          # none, smtp, ftp, imap, pop3, ldap
-VERSIONS=$3          # comma-separated e.g. "tls1_2,tls1_3"
-CERTS=$4            
-HEARTBLEED=$5       
-COMPRESSION=$6       
-FALLBACK=$7          
-SIGNATURES=$8        
+TARGET=$1
+STARTTLS=$2         # none, smtp, ftp, ...
+CERTS=$3            # true/false
+HEARTBLEED=$4
+COMPRESSION=$5
+FALLBACK=$6
+SIGNATURES=$7
 
 CMD="/opt/testssl.sh/testssl.sh --quiet"
 
-# STARTTLS
 if [[ "$STARTTLS" != "none" ]]; then
   CMD="$CMD --starttls $STARTTLS"
 fi
 
-# TLS version enforcement
-IFS=',' read -ra VLIST <<< "$VERSIONS"
-for ver in "${VLIST[@]}"; do
-  CMD="$CMD --$ver"
-done
+# Protocol check (always print all protocols)
+CMD="$CMD -p"
 
-# Options
 [[ "${CERTS,,}" == "true" ]]       && CMD="$CMD --cert"
 [[ "${HEARTBLEED,,}" == "true" ]]  && CMD="$CMD --heartbleed"
 [[ "${COMPRESSION,,}" == "true" ]] && CMD="$CMD --compression"

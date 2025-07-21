@@ -1,29 +1,27 @@
 #!/bin/bash
 
-TARGET=$1
-PORTS=$2          # e.g. "21,22,80" or "top-ports"
-SCAN_OPTS=$3      # e.g. "-sV -O -A -sC"
-SCRIPTS=$4        # e.g. "vulners,http-headers" (comma-separated)
+TARGET="$1"
+PORTS="$2"
+SCRIPTS="$3"
+OPTIONS="$4"
 
-CMD="nmap $SCAN_OPTS"
+echo "=== Starting Nmap Scan ==="
+echo "Target : $TARGET"
+echo "Ports  : $PORTS"
+echo "Script : $SCRIPTS"
+echo "Options: $OPTIONS"
 
-# Handle ports
-if [[ "${PORTS,,}" == "top-ports" ]]; then
-  CMD="$CMD --top-ports 100"
-elif [[ -n "$PORTS" ]]; then
-  CMD="$CMD -p $PORTS"
+NMAP_CMD="nmap"
+if [[ -n "$OPTIONS" ]]; then
+  NMAP_CMD="$NMAP_CMD $OPTIONS"
 fi
-
-# Handle scripts
+if [[ -n "$PORTS" ]]; then
+  NMAP_CMD="$NMAP_CMD -p $PORTS"
+fi
 if [[ -n "$SCRIPTS" ]]; then
-  IFS=',' read -ra SCRIPT_ARRAY <<< "$SCRIPTS"
-  for script in "${SCRIPT_ARRAY[@]}"; do
-    CMD="$CMD --script=$script"
-  done
+  NMAP_CMD="$NMAP_CMD --script $SCRIPTS"
 fi
+NMAP_CMD="$NMAP_CMD $TARGET"
 
-# Append target
-CMD="$CMD $TARGET"
-
-# Run the command
-eval "$CMD"
+echo "Running: $NMAP_CMD"
+eval $NMAP_CMD

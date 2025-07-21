@@ -48,50 +48,6 @@ export function XssTester() {
     { value: "custom", label: "Custom path..." },
   ]
 
-  const handleXssTest = async () => {
-    if (!url.trim()) {
-      toast("Please enter a target URL")
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-    setResults("")
-
-    try {
-      // Simulate scan/exploitation
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      let result = ""
-      if (scanType === "detection") {
-        result = `[+] Scanning ${url} for XSS vulnerabilities\n`
-        result += `[+] Testing parameters: ${parameters}\n`
-        result += `[+] Technique: ${technique}\n`
-        result += "[*] Potential vulnerabilities found:\n"
-        result += "- Parameter 'search' appears vulnerable to ${technique} XSS\n"
-        result += "- Parameter 'id' may be vulnerable to DOM-based XSS\n"
-      } else {
-        result = `[+] Testing XSS payloads on ${url}\n`
-        result += `[+] Using ${wordlist} wordlist with ${threads} threads\n`
-        result += "[*] Successful payloads:\n"
-        result += "- <script>alert(1)</script>\n"
-        result += "- \" onerror=\"alert(1)\"\n"
-        result += "- javascript:alert(document.domain)\n"
-        result += "[+] Contexts found:\n"
-        result += "- HTML attribute (unquoted)\n"
-        result += "- JavaScript string\n"
-      }
-      
-      setResults(result)
-      toast(`${scanType === "detection" ? "Scan" : "Testing"} completed`)
-    } catch (err) {
-      setError("Operation failed")
-      toast(`Failed to complete ${scanType === "detection" ? "scan" : "testing"}`)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   return (
     <Card className="w-full">
       <CardHeader>
@@ -120,22 +76,6 @@ export function XssTester() {
               </SelectTrigger>
               <SelectContent>
                 {scanTypes.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label>XSS Technique</Label>
-            <Select value={technique} onValueChange={setTechnique}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select technique" />
-              </SelectTrigger>
-              <SelectContent>
-                {techniques.map((t) => (
                   <SelectItem key={t.value} value={t.value}>
                     {t.label}
                   </SelectItem>
@@ -181,15 +121,6 @@ export function XssTester() {
           {advancedOpen && (
             <div className="rounded-md border p-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="parameters">Parameters to Test</Label>
-                  <Input
-                    id="parameters"
-                    placeholder="search,query,id"
-                    value={parameters}
-                    onChange={(e) => setParameters(e.target.value)}
-                  />
-                </div>
                 
                 {scanType === "exploitation" && wordlist === "custom" && (
                   <div className="space-y-2">

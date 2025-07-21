@@ -1,5 +1,5 @@
-import { exec } from 'child_process';
-import util from 'util';
+import { exec } from "child_process";
+import util from "util";
 
 const asyncExec = util.promisify(exec);
 
@@ -27,18 +27,18 @@ export async function runWhois(
 
   // validate domain format
   if (!domain.match(/^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i)) {
-    throw new Error('Invalid domain format');
+    throw new Error("Invalid domain format");
   }
 
   const args = [
     domain,
-    options.recursive ? 'true' : 'false',
-    options.raw ? 'true' : 'false'
-  ].map(arg => `'${arg.replace(/'/g, "'\\''")}'`);
+    options.recursive ? "true" : "false",
+    options.raw ? "true" : "false",
+  ].join(" ");
 
   try {
     const { stdout } = await asyncExec(
-      `docker exec ${container} /docker/scripts/run-whois.sh ${args.join(' ')}`
+      `docker exec ${container} /docker/scripts/run-whois.sh ${args}`
     );
 
     if (options.raw) {
@@ -46,12 +46,29 @@ export async function runWhois(
     }
 
     const result: WhoisResult = {
-      domainName: extractValue(stdout, 'domain name'),
-      registrar: extractValue(stdout, 'registrar'),
-      updatedDate: extractValue(stdout, 'updated date'),
-      creationDate: extractValue(stdout, 'creation date'),
-      expiryDate: extractValue(stdout, 'expiry|expiration date'),
-      nameServers: extractNameServers(stdout)
+      domainName: extractValueMulti(stdout, ["Domain Name"]),
+      registrar: extractValueMulti(stdout, [
+        "Registrar",
+        "Sponsoring Registrar",
+        "Registrar Name",
+      ]),
+      updatedDate: extractValueMulti(stdout, [
+        "Updated Date",
+        "Last Updated On",
+        "Last Modified",
+      ]),
+      creationDate: extractValueMulti(stdout, [
+        "Creation Date",
+        "Registered On",
+      ]),
+      expiryDate: extractValueMulti(stdout, [
+        "Registrar Registration Expiration Date",
+        "Registry Expiry Date",
+        "Expiration Date",
+        "Expiry Date",
+        "paid-till",
+      ]),
+      nameServers: extractNameServers(stdout),
     };
 
     // handle recursive lookup if present
@@ -64,18 +81,30 @@ export async function runWhois(
 
     return result;
   } catch (error) {
-    throw new Error(`WHOIS lookup failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `WHOIS lookup failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
   }
 }
 
 // helper functions
-function extractValue(output: string, pattern: string): string | undefined {
-  const match = new RegExp(pattern, 'i').exec(output);
-  return match ? match[0].split(':').slice(1).join(':').trim() : undefined;
+function extractValueMulti(output: string, keys: string[]): string | undefined {
+  const lines = output.split(/\r?\n/);
+  for (const key of keys) {
+    const regex = new RegExp(`^${key}\\s*:\\s*(.*)$`, "i");
+    for (const line of lines) {
+      const match = regex.exec(line);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+  }
+  return undefined;
 }
-
 function extractNameServers(output: string): string[] {
   const nsMatches = output.match(/name server:\s*(.+)/gi);
   if (!nsMatches) return [];
-  return nsMatches.map(ns => ns.split(':')[1].trim()).filter(ns => ns);
+  return nsMatches.map((ns) => ns.split(":")[1].trim()).filter((ns) => ns);
 }

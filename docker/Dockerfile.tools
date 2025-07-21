@@ -1,36 +1,61 @@
 FROM kalilinux/kali-rolling
 
-# isolated Python package management
+# Update and install core utilities, Python and git
 RUN apt-get update && \
     apt-get install -y \
+    wget \
+    curl \
     pipx \
-    && rm -rf /var/lib/apt/lists/*
+    python3 python3-pip git \
+    python3-fuzzywuzzy && \
+rm -rf /var/lib/apt/lists/*
 
-# Update and install all tools
+# Install Node.js and npm (for Next.js and dev workflows)
+# This uses Debian/Kali repositories to ensure compatibility.
+RUN apt-get update && \
+    apt-get install -y nodejs npm && \
+    node -v && npm -v
+
+# Log directory for tools
+RUN mkdir -p /var/log && touch /var/log/nmap_scan.log && chmod 666 /var/log/nmap_scan.log
+
+# Install security tools and wordlists
 RUN apt-get update && \
     apt-get install -y \
-    # Standard tools
+    seclists wordlists \
     nmap subfinder amass assetfinder dnsgen whois \
     nikto wpscan skipfish ffuf gobuster dirb dirsearch \
     sqlmap hashcat john testssl.sh \
     mongodb-clients \
-    python3 python3-pip git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install tools from GitHub
+RUN gunzip -c /usr/share/wordlists/rockyou.txt.gz > /usr/share/wordlists/rockyou.txt
+
+# Download additional Nmap NSE scripts and update script database
+RUN cd /usr/share/nmap/scripts && \
+    wget https://svn.nmap.org/nmap/scripts/vulners.nse && \
+    nmap --script-updatedb
+
+# Clone extra tools from GitHub
 RUN git clone https://github.com/maurosoria/dirsearch.git /opt/dirsearch && \
     git clone https://github.com/s0md3v/XSStrike /opt/XSStrike && \
     git clone https://github.com/torque59/Nosql-Exploitation-Framework /opt/nosql-exploitation-framework
 
-# Install Python packages that are available via pipx
+RUN git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh \
+    && chmod +x /opt/testssl.sh/testssl.sh
+# Use pipx for Python utilities
 RUN pipx install dnsgen && \
     pipx ensurepath
 
-# Setup working environment
+# Set up working directory and add custom tools to PATH
 WORKDIR /app
 ENV PATH="/opt/dirsearch:/opt/XSStrike:/opt/NoSQLMap:/opt/nosql-exploitation-framework:${PATH}"
 
-# installation verification
+COPY package.json package-lock.json ./
+RUN npm install
+COPY . .
+
+# (Optional) Installation verification for troubleshooting
 RUN echo "=== Tool Verification ===" && \
     echo "Nmap: $(nmap --version | head -n 1)" && \
     echo "Subfinder: $(subfinder -version 2>&1)" && \
@@ -52,6 +77,11 @@ RUN echo "=== Tool Verification ===" && \
     echo "TestSSL: installed" && \
     echo "All essential tools verified"
 
+# Project note
 RUN echo -e "\n\nNote: For NoSQLMap, use the official Docker image:\ndocker run -it codingo/nosqlmap\n" >> /root/README.md
 
+# Copy your project scripts in
 COPY docker/scripts/ /docker/scripts/
+
+# If this image should launch your Next.js dev server by default
+CMD ["npm", "run", "dev"]

@@ -3,34 +3,57 @@ import util from 'util';
 
 const asyncExec = util.promisify(exec);
 
-type WordlistPreset = 'common-2500' | 'big-10k' | 'mega-50k' | string;
-type Extensions = string; 
+interface FFUFResult {
+  success: boolean;
+  data?: any;  // Parsed JSON output
+  error?: string;
+}
 
 export async function runFFUF(
   url: string,
-  wordlist: WordlistPreset,
+  wordlist: string,
   threads: number,
-  extensions: Extensions = '',
+  extensions: string = '',
   recursive: boolean = false,
   followRedirects: boolean = false
-) {
+): Promise<FFUFResult> {
   const container = process.env.NEXT_PUBLIC_CONTAINER_NAME;
+
+  // Input validation
+  if (!url.match(/^https?:\/\/.+/i)) {
+    return {
+      success: false,
+      error: 'Invalid URL format'
+    };
+  }
 
   const args = [
     url,
     wordlist,
-    threads.toString(),
-    extensions,
-    recursive.toString().toLowerCase(),
-    followRedirects.toString().toLowerCase()
-  ].map(arg => `'${arg.replace(/'/g, "'\\''")}'`);
+    Math.max(1, Math.min(threads, 100)).toString(),
+    extensions.replace(/[^a-zA-Z0-9,]/g, ''),
+    String(recursive),
+    String(followRedirects)
+  ];
 
   try {
-    const { stdout } = await asyncExec(
-      `docker exec ${container} /docker/scripts/run-ffuf.sh ${args.join(' ')}`
+    const { stdout, stderr } = await asyncExec(
+      `docker exec ${container} /docker/scripts/run-ffuf.sh ${args.join(' ')}`,
+      { maxBuffer: 1024 * 1024 * 10 }
     );
-    return stdout;
+  
+    // Return everything as a string
+    return {
+      success: true,
+      data: {
+        stdout,
+        stderr
+      }
+    };
   } catch (error) {
-    throw new Error(`FFUF execution failed: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
+    const err = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      error: err
+    };
+  }}

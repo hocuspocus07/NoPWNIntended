@@ -8,20 +8,18 @@ export async function runAmass(
   bruteforce: boolean,
   passive: boolean,
   active: boolean,
-  threads: number
 ) {
   const container = process.env.NEXT_PUBLIC_CONTAINER_NAME;
   const args = [
     domain,
-    bruteforce.toString(),
-    passive.toString(),
-    active.toString(),
-    threads.toString(),
-  ].map((arg) => `'${arg.replace(/'/g, "'\\''")}'`);
+    String(bruteforce),
+    String(passive),
+    String(active),
+  ].join(' ');
 
   try {
     const { stdout } = await asyncExec(
-      `docker exec ${container} /docker/scripts/run-amass.sh ${args.join(" ")}`
+      `docker exec ${container} /docker/scripts/run-amass.sh ${args}`
     );
     return stdout;
   } catch (error) {

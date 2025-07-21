@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.tools   # Or adjust as needed
+    volumes:
+      - ../src:/app/src            # Mount your src/ folder
+      - ../package.json:/app/package.json
+      - ../package-lock.json:/app/package-lock.json
+      - C:/Users/Lenovo/Desktop/coding/next tuts/no-pwn-intended/docker/scripts:/docker/scripts
+    ports:
+      - "3001:3000"
+    command: npm run dev           # Ensure you run your dev server

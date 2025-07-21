@@ -39,7 +39,8 @@ export function DirectoryBruteForcer() {
     { value: "common", label: "Common (2,500 entries)" },
     { value: "big", label: "Big (10,000 entries)" },
     { value: "mega", label: "Mega (50,000 entries)" },
-    { value: "custom", label: "Custom path..." },
+    { value: "Kali-standard", label: "Kali standard" },
+    { value: "Kali-large", label: "Kali large" },
   ]
 
   const handleDirectoryBruteForce = async () => {
@@ -137,7 +138,7 @@ export function DirectoryBruteForcer() {
             </Select>
           </div>
           
-          {wordlist === "custom" && (
+          {/* {wordlist === "custom" && (
             <div className="space-y-2">
               <Label>Custom Wordlist Path</Label>
               <Input
@@ -145,7 +146,7 @@ export function DirectoryBruteForcer() {
                 onChange={(e) => setWordlist(e.target.value)}
               />
             </div>
-          )}
+          )} */}
         </div>
         
         <div className="space-y-2">

@@ -11,14 +11,10 @@ export async function runNikto(
 ) {
   const container = process.env.NEXT_PUBLIC_CONTAINER_NAME;
 
-  const args = [
-    target,
-    aggressiveness
-  ].map(arg => `'${arg.replace(/'/g, "'\\''")}'`);
-
+  const args = [target, aggressiveness].join(' ');
   try {
     const { stdout } = await asyncExec(
-      `docker exec ${container} /docker/scripts/run-nikto.sh ${args.join(' ')}`
+      `docker exec ${container} /docker/scripts/run-nikto.sh ${args}`
     );
     return stdout;
   } catch (error) {

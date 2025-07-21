@@ -3,29 +3,25 @@ import util from 'util';
 
 const asyncExec = util.promisify(exec);
 
-type XSSType = 'reflected' | 'dom' | 'stored';
 type ScanType = 'detect' | 'payload';
 
 export async function runXSStrike(
   url: string,
-  params: string,
   threads: number = 10,
   options: {
-    xssType?: XSSType;
     scanType?: ScanType;
     encode?: boolean;
   } = {}
 ): Promise<string> {
+  const testResponse = await fetch(url, { method: 'HEAD' });
+    if (!testResponse.ok) {
+      throw new Error(`Target URL returned ${testResponse.status}`);
+    }
   const container = process.env.NEXT_PUBLIC_CONTAINER_NAME;
 
   // validate URL format
   if (!url.match(/^https?:\/\/[^\s\/$.?#].[^\s]*$/i)) {
     throw new Error('Invalid URL format');
-  }
-
-  // validate parameters
-  if (!params.match(/^[a-zA-Z0-9_,]+$/)) {
-    throw new Error('Parameters must be comma-separated alphanumeric values');
   }
 
   // validate threads
@@ -35,9 +31,7 @@ export async function runXSStrike(
 
   const args = [
     url,
-    params,
     threads.toString(),
-    options.xssType || 'reflected',
     options.scanType || 'detect',
     options.encode ? 'true' : 'false'
   ].map(arg => `'${arg.replace(/'/g, "'\\''")}'`);
@@ -47,7 +41,7 @@ export async function runXSStrike(
       `docker exec ${container} /docker/scripts/run-xsstrike.sh ${args.join(' ')}`
     );
     return stdout;
-  } catch (error) {
+  } catch (error:any) {
     throw new Error(`XSStrike scan failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

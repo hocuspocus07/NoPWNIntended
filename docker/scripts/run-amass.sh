@@ -19,9 +19,5 @@ if [[ "${BRUTEFORCE,,}" == "true" ]]; then
   CMD="$CMD -brute"
 fi
 
-if [[ -n "$THREADS" ]]; then
-  CMD="$CMD -threads $THREADS"
-fi
-
 # Run the command
 eval "$CMD"

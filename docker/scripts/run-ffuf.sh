@@ -1,32 +1,57 @@
 #!/bin/bash
+set -euo pipefail
+
+exec 2>&1
 
 URL=$1
-WORDLIST=$2        # common-2500 | big-10k | mega-50k | /custom/path.txt
+WORDLIST=$2
 THREADS=$3
-EXTENSIONS=$4      # comma-separated
-RECURSIVE=$5       
-FOLLOW_REDIRECTS=$6  
+EXTENSIONS=$4
+RECURSIVE=$5
+FOLLOW_REDIRECTS=$6
 
-# Wordlist resolution
-case "$WORDLIST" in
-  common-2500)
-    WORDLIST="/app/wordlists/common.txt"
-    ;;
-  big-10k)
-    WORDLIST="/app/wordlists/big.txt"
-    ;;
-  mega-50k)
-    WORDLIST="/app/wordlists/mega.txt"
-    ;;
-esac
-
-CMD="ffuf -u $URL/FUZZ -w $WORDLIST -t $THREADS"
-
-if [[ -n "$EXTENSIONS" ]]; then
-  CMD="$CMD -e .$EXTENSIONS"
+# Verify FFUF exists
+FFUF_PATH=$(which ffuf || echo "")
+if [[ -z "$FFUF_PATH" ]]; then
+  echo "FFUF_NOT_INSTALLED" >&2
+  exit 1
 fi
 
-[[ "${RECURSIVE,,}" == "true" ]] && CMD="$CMD -recursion"
-[[ "${FOLLOW_REDIRECTS,,}" == "true" ]] && CMD="$CMD -r"
+# Simple wordlist resolution
+if [[ "$WORDLIST" == "common" ]]; then
+  WORDLIST_PATH="/usr/share/seclists/Discovery/Web-Content/common.txt"
+elif [[ "$WORDLIST" == "big" ]]; then
+  WORDLIST_PATH="/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt"
+elif [[ "$WORDLIST" == "mega" ]]; then
+  WORDLIST_PATH="/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-big.txt"
+else
+  echo "WORDLIST_NOT_FOUND: $WORDLIST" >&2
+  exit 1
+fi
 
-eval "$CMD"
+if [[ ! -f "$WORDLIST_PATH" ]]; then
+  echo "WORDLIST_NOT_FOUND: $WORDLIST_PATH" >&2
+  exit 1
+fi
+
+CMD=(
+  "$FFUF_PATH"
+  -u "${URL}/FUZZ"
+  -w "$WORDLIST_PATH"
+  -t "$THREADS"
+  -noninteractive
+  -o -
+  -of json
+)
+
+if [[ -n "$EXTENSIONS" ]]; then
+  IFS=',' read -ra EXT_ARRAY <<< "$EXTENSIONS"
+  for ext in "${EXT_ARRAY[@]}"; do
+    CMD+=(-e ".${ext}")
+  done
+fi
+
+[[ "$RECURSIVE" == "true" ]] && CMD+=(-recursion)
+[[ "$FOLLOW_REDIRECTS" == "true" ]] && CMD+=(-r)
+
+exec "${CMD[@]}"
