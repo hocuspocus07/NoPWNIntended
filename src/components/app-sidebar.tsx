@@ -1,6 +1,7 @@
 import * as React from "react"
 import {
   ScanSearch, ShieldAlert, Bug, Code2, Network,
+  ScanEye,
 } from "lucide-react"
 import { useSidebar } from "@/components/ui/sidebar"
 import { NavMain } from "@/components/nav-main"
@@ -14,6 +15,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { redirect } from "next/navigation"
+import { title } from "process"
 
 const data = {
   teams: [
@@ -92,6 +94,13 @@ const data = {
         }
       ],
     },
+    {title:"Misc",
+      icon: ScanEye,
+      items:[
+        {title:"Forensics Tool"},
+        {title:"Reverse Engineering"}
+      ]
+    }
   ],
 }
 

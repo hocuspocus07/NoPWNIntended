@@ -27,8 +27,19 @@ RUN apt-get update && \
     nikto wpscan skipfish ffuf gobuster dirb dirsearch \
     sqlmap hashcat john testssl.sh \
     mongodb-clients \
+    sleuthkit \
+    binwalk \
+    foremost \
+    testdisk \
+    radare2 \
+    binutils \
+    gdb \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && \
+    apt-get install -y vim-common && \
+    rm -rf /var/lib/apt/lists/*
+    
 RUN gunzip -c /usr/share/wordlists/rockyou.txt.gz > /usr/share/wordlists/rockyou.txt
 
 # Download additional Nmap NSE scripts and update script database
