@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   ScanSearch, ShieldAlert, Bug, Code2, Network,
   ScanEye,
+  SearchCheck,
 } from "lucide-react"
 import { useSidebar } from "@/components/ui/sidebar"
 import { NavMain } from "@/components/nav-main"
@@ -94,13 +95,22 @@ const data = {
         }
       ],
     },
+    {
+      title:"OSINT",
+      icon:SearchCheck,
+      items:[
+        {title:"Holehe"},
+        {title:"Sherlock"},
+        {title:"Exiftool"},
+      ]
+    },
     {title:"Misc",
       icon: ScanEye,
       items:[
         {title:"Forensics Tool"},
         {title:"Reverse Engineering"}
       ]
-    }
+    },
   ],
 }
 

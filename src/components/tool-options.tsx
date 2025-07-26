@@ -14,6 +14,9 @@ import { HashCracker } from "./tools/hash-cracker"
 import { JwtTool } from "./tools/jwt-encoder-decoder"
 import { ForensicsTool } from "./tools/forensics"
 import { ReverseEngineeringTool } from "./tools/reverse-engineering"
+import { HoleheTool } from "./tools/holehe"
+import { SherlockTool } from "./tools/sherlock"
+import { ExifTool } from "./tools/exiftool"
 interface ToolOptionsProps {
     activeTool: string | null
     onRegisterScan: (scanFn: () => Promise<string>) => void
@@ -103,6 +106,9 @@ function ToolOptions({ activeTool, onRegisterScan }: ToolOptionsProps) {
             {activeTool==="jwt-encoder/decoder" && <JwtTool/>}
             {activeTool==="forensics-tool" && <ForensicsTool/>}
             {activeTool==="reverse-engineering" && <ReverseEngineeringTool/>}
+            {activeTool==="holehe"&& <HoleheTool/>}
+            {activeTool==="sherlock"&& <SherlockTool/>}
+            {activeTool==="exiftool" && <ExifTool/>}
             {!activeTool && <div>Select a tool from the sidebar</div>}
         </div>
     )

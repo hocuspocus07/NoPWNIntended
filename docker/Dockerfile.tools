@@ -58,6 +58,23 @@ RUN git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl.
 RUN pipx install dnsgen && \
     pipx ensurepath
 
+# Install OSINT tools (holehe, maigret, sherlock, exiftool)
+RUN apt-get update && \
+    apt-get install -y \
+    exiftool \ 
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python-based OSINT tools (holehe, maigret, sherlock)
+RUN apt-get update && apt-get install -y pipx
+
+RUN pipx install holehe
+RUN pipx install sherlock-project
+ENV PATH="/root/.local/bin:${PATH}"
+
+RUN echo "=== OSINT Tools Verification ===" && \
+    echo "ExifTool: $(exiftool -ver)" && \
+    echo "holehe: $(holehe --version 2>&1)" && \
+    echo "sherlock: $(sherlock --version 2>&1)"
 # Set up working directory and add custom tools to PATH
 WORKDIR /app
 ENV PATH="/opt/dirsearch:/opt/XSStrike:/opt/NoSQLMap:/opt/nosql-exploitation-framework:${PATH}"
