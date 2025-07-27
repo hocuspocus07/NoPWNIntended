@@ -1,27 +1,21 @@
 #!/bin/bash
 
-TARGET="$1"
-PORTS="$2"
-SCRIPTS="$3"
-OPTIONS="$4"
-
-echo "=== Starting Nmap Scan ==="
-echo "Target : $TARGET"
-echo "Ports  : $PORTS"
-echo "Script : $SCRIPTS"
-echo "Options: $OPTIONS"
+set -euo pipefail
 
 NMAP_CMD="nmap"
-if [[ -n "$OPTIONS" ]]; then
-  NMAP_CMD="$NMAP_CMD $OPTIONS"
-fi
-if [[ -n "$PORTS" ]]; then
-  NMAP_CMD="$NMAP_CMD -p $PORTS"
-fi
-if [[ -n "$SCRIPTS" ]]; then
-  NMAP_CMD="$NMAP_CMD --script $SCRIPTS"
-fi
-NMAP_CMD="$NMAP_CMD $TARGET"
 
-echo "Running: $NMAP_CMD"
-eval $NMAP_CMD
+if [[ -n "$4" && "$4" != "null" ]]; then
+  NMAP_CMD="$NMAP_CMD $4"
+fi
+
+if [[ -n "$2" && "$2" != "null" ]]; then
+  NMAP_CMD="$NMAP_CMD -p $2"
+fi
+
+if [[ -n "$3" && "$3" != "null" ]]; then
+  NMAP_CMD="$NMAP_CMD --script $3"
+fi
+
+NMAP_CMD="$NMAP_CMD $1"
+
+$NMAP_CMD 2>&1 

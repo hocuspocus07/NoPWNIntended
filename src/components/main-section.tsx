@@ -20,7 +20,13 @@ export function MainSection({ activeTool }: { activeTool: string | null, activeT
   )
   const [showOutput, setShowOutput] = useState(false)
   const isMobile = useIsMobile()
-
+const clearOutput = useCallback(() => {
+    setOutput("");
+    setShowOutput(false);
+  }, []);
+  useEffect(() => {
+    clearOutput();
+  }, [activeTool, clearOutput]);
   const handleSubmit = async () => {
     setIsLoading(true)
     setOutput("")
@@ -29,12 +35,12 @@ export function MainSection({ activeTool }: { activeTool: string | null, activeT
       const result = await scanFn()
       setOutput(result)
       if (isMobile) {
-        setShowOutput(true) // Show output panel on mobile after scan completes
+        setShowOutput(true) 
       }
     } catch (err) {
       setOutput(`Scan failed: ${String(err)}`)
       if (isMobile) {
-        setShowOutput(true) // Show output panel even if scan fails
+        setShowOutput(true)
       }
     } finally {
       setIsLoading(false)
@@ -45,7 +51,6 @@ export function MainSection({ activeTool }: { activeTool: string | null, activeT
     setScanFn(() => fn)
   }, [])
 
-  // Reset view when active tool changes on mobile
   useEffect(() => {
     if (isMobile && activeTool) {
       setShowOutput(false)
@@ -57,8 +62,8 @@ export function MainSection({ activeTool }: { activeTool: string | null, activeT
       <div className="h-[calc(100vh-4rem)] w-full overflow-hidden">
         {!showOutput ? (
           <div className="flex h-full flex-col overflow-hidden">
-            <ScrollArea className="flex-1 p-6">
-              <ToolOptions activeTool={activeTool} onRegisterScan={registerScan} />
+            <ScrollArea className="flex-1 p-6 h-full max-h-full overflow-y-scroll">
+              <ToolOptions activeTool={activeTool} onRegisterScan={registerScan} onToolChange={clearOutput} />
             </ScrollArea>
             {activeTool && (
               <div className="border-t p-4">

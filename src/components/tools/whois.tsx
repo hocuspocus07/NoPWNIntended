@@ -1,7 +1,6 @@
-// components/tools/whois-panel.tsx
 "use client"
 
-import { useState } from "react"
+import { useState,useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,7 +9,7 @@ import { Loader2, Search, ChevronDown, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import { Switch } from "@/components/ui/switch"
 
-export function WhoisPanel() {
+export function WhoisPanel({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
   const [domain, setDomain] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -18,26 +17,64 @@ export function WhoisPanel() {
   const [recursive, setRecursive] = useState(false)
   const [rawOutput, setRawOutput] = useState(false)
 
-  const handleWhoisLookup = async () => {
-    if (!domain.trim()) {
-      toast("Please enter a domain to lookup")
-      return
-    }
+  useEffect(() => {
+    onRegisterScan(async () => {
+      if (!domain.trim()) {
+        throw new Error("Please enter a domain to lookup")
+      }
 
-    setIsLoading(true)
-    setError(null)
+      // Validate domain format
+      if (!/^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i.test(domain)) {
+        throw new Error("Please enter a valid domain name")
+      }
 
-    try {
-      console.log("hi");
-      //response
-    } catch (err) {
-      setError("Failed to fetch WHOIS data")
-      toast("Failed to perform WHOIS lookup")
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        // Get the current session
+        let token = localStorage.getItem("access_token");
+      if (!token) {
+        const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
+        if (supa) {
+          try {
+            token = JSON.parse(supa).access_token;
+          } catch (e) {
+            token = null;
+          }
+        }
+      }
+      console.log("Token used for fetch:", token);
+        const response = await fetch("/api/recon/whois", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            domain,
+            scanOpts: {
+              recursive,
+              rawOutput
+            }
+          })
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || "WHOIS lookup failed")
+        }
+
+        const result = await response.json()
+        return typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2)
+      } catch (err) {
+        console.error("WHOIS error:", err)
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    })
+  }, [domain, recursive, rawOutput, onRegisterScan])
 
   return (
     <Card className="w-full">

@@ -6,6 +6,7 @@ const asyncExec = util.promisify(exec);
 export interface WhoisOptions {
   recursive?: boolean;
   raw?: boolean;
+  includeRaw?: boolean; // New option to include raw output
 }
 
 export interface WhoisResult {
@@ -17,6 +18,7 @@ export interface WhoisResult {
   nameServers?: string[];
   registrarWhois?: string;
   rawOutput?: string;
+  completeOutput?: string; // New field for complete raw output
 }
 
 export async function runWhois(
@@ -41,11 +43,17 @@ export async function runWhois(
       `docker exec ${container} /docker/scripts/run-whois.sh ${args}`
     );
 
+    // Always include the complete raw output
+    const result: WhoisResult = {
+      completeOutput: stdout
+    };
+
     if (options.raw) {
-      return { rawOutput: stdout };
+      return { ...result, rawOutput: stdout };
     }
 
-    const result: WhoisResult = {
+    // Add parsed fields
+    Object.assign(result, {
       domainName: extractValueMulti(stdout, ["Domain Name"]),
       registrar: extractValueMulti(stdout, [
         "Registrar",
@@ -69,7 +77,7 @@ export async function runWhois(
         "paid-till",
       ]),
       nameServers: extractNameServers(stdout),
-    };
+    });
 
     // handle recursive lookup if present
     if (options.recursive) {
@@ -89,7 +97,7 @@ export async function runWhois(
   }
 }
 
-// helper functions
+// helper functions remain the same
 function extractValueMulti(output: string, keys: string[]): string | undefined {
   const lines = output.split(/\r?\n/);
   for (const key of keys) {
@@ -103,6 +111,7 @@ function extractValueMulti(output: string, keys: string[]): string | undefined {
   }
   return undefined;
 }
+
 function extractNameServers(output: string): string[] {
   const nsMatches = output.match(/name server:\s*(.+)/gi);
   if (!nsMatches) return [];

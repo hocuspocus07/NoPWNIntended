@@ -24,17 +24,22 @@ export default function DashboardClient() {
   const [activeToolTitle, setActiveToolTitle] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [output, setOutput] = useState("");
+
+  const clearOutput = () => {
+    setOutput("");
+  };
   const handleToolSelect = (category: string, toolId: string, toolTitle: string) => {
     setActiveCategory(category)
     setActiveTool(toolId)
     setActiveToolTitle(toolTitle)
   }
-
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar
         activeTool={activeTool}
         onToolSelect={handleToolSelect}
+        onToolClick={clearOutput}
       />
       <SidebarInset>
         <header className="flex text-foreground h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">

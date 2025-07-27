@@ -12,13 +12,13 @@ interface NmapResult {
 
 export async function runNmap(
   target: string,
-  ports: string,
-  scripts: string,
-  options: string = '-sV'
+  ports: string = '',
+  scripts: string = '',
+  options: string = ''
 ): Promise<NmapResult> {
-  const container = process.env.NEXT_PUBLIC_CONTAINER_NAME || 'my-tools-container';
+  const container = process.env.NEXT_PUBLIC_CONTAINER_NAME || 'nmap-container';
 
-  // Validate target for security (basic, for IP or hostname)
+  // Enhanced security validation
   if (!/^[a-zA-Z0-9.-]+$/.test(target)) {
     return {
       success: false,
@@ -26,44 +26,52 @@ export async function runNmap(
     };
   }
 
-  // Compose safe shell arguments for the script
-  const shellArgs = [
-  target,
-  ports,
-  scripts,
-  options
-].map(arg => arg ?? '').join(' ')
+  // Validate ports format
+  if (ports && !/^[0-9,-]*$/.test(ports)) {
+    return {
+      success: false,
+      error: 'Invalid ports format - only numbers, commas and hyphens allowed',
+    };
+  }
+
+  // Build command parts safely
+  const cmdParts = [
+    'nmap',
+    options,
+    ports ? `-p ${ports}` : '',
+    scripts ? `--script ${scripts}` : '',
+    target
+  ].filter(Boolean); // Remove empty strings
 
   try {
-    // Optionally get log preview before the scan
-    const { stdout: preLogs } = await asyncExec(
-      `docker exec ${container} tail -n 50 /var/log/nmap_scan.log || echo "No log file yet"`
+    const { stdout, stderr } = await asyncExec(
+      `docker exec ${container} ${cmdParts.join(' ')}`,
+      { 
+        maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+        timeout: 600000 // 10 minute timeout
+      }
     );
 
-    // Execute the scan (calls your bash script in the running container)
-    const { stdout } = await asyncExec(
-      `docker exec ${container} /docker/scripts/run-nmap.sh ${shellArgs}`,
-      { maxBuffer: 1024 * 1024 * 10 }
-    );
-
-    // Optionally get log preview after the scan
-    const { stdout: postLogs } = await asyncExec(
-      `docker exec ${container} tail -n 100 /var/log/nmap_scan.log || echo "No log file yet"`
+    // Get recent logs for context
+    const { stdout: logs } = await asyncExec(
+      `docker logs --tail 100 ${container} 2>&1 || echo "Logs unavailable"`
     );
 
     return {
       success: true,
       output: stdout,
-      logs: `=== PRE-SCAN LOGS ===\n${preLogs}\n\n=== POST-SCAN LOGS ===\n${postLogs}`
+      logs: logs,
+      error: stderr
     };
   } catch (error: any) {
-    // Grab logs for troubleshooting on error
+    // Get full logs on error
     const { stdout: fullLogs } = await asyncExec(
-      `docker exec ${container} cat /var/log/nmap_scan.log || echo "Logs unavailable"`
+      `docker logs --tail 500 ${container} 2>&1 || echo "Logs unavailable"`
     );
+
     return {
       success: false,
-      error: error instanceof Error ? error.message.split('\n')[0] : String(error),
+      error: error instanceof Error ? error.message : String(error),
       logs: fullLogs
     };
   }

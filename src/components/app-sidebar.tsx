@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/sidebar"
 import { redirect } from "next/navigation"
 import { title } from "process"
-
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Button } from "./ui/button"
+import { PanelLeftIcon } from "lucide-react"
 const data = {
   teams: [
     {
@@ -117,12 +119,15 @@ const data = {
 export function AppSidebar({
   activeTool,
   onToolSelect,
+  onToolClick,
   ...props
 }: {
   activeTool: string | null;
   onToolSelect: (category: string, toolId: string, toolTitle: string) => void;
+  onToolClick?: () => void;
 } & React.ComponentProps<typeof Sidebar>) {
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
+  const isMobile = useIsMobile();
   const collapsed = state === "collapsed";
 
   const navItems = data.navMain.map(category => ({
@@ -133,34 +138,58 @@ export function AppSidebar({
     }))
   }))
 
+  const handleToolSelect = (category: string, toolId: string, toolTitle: string) => {
+    onToolSelect(category, toolId, toolTitle);
+    if (isMobile) {
+      toggleSidebar(); // This will toggle the sidebar state
+    }
+    if (onToolClick) {
+      onToolClick();
+    }
+  };
+
   const iconClicked = () => {
-    redirect('/')
+    redirect('/');
   }
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="flex items-center justify-start h-16" onClick={iconClicked}>
-        {collapsed ? (
-          <Image src="/images/icon-no-bg.png" alt="Icon" width={48} height={40} />
-        ) : (<div className="flex h-full w-full items-center justify-center ml-2">
-          <Image src="/images/icon-no-bg.png" alt="Icon" width={48} height={40} className="h-10 w-10"/>
-          <span className="text-2xl font-extrabold p-2 flex-1">NoPWNIntended</span>
-          </div>
-        )}
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain
-          items={navItems}
-          activeTool={activeTool}
-          onToolSelect={onToolSelect}
-          sidebarCollapsed={collapsed}
-        />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser/>
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
-  )
+    <>
+      {/* Sidebar Trigger - Add this button outside the Sidebar */}
+      {isMobile && !collapsed && (
+        <Button 
+          variant="ghost" 
+          size="icon"
+          className="fixed z-50 top-2 left-2"
+          onClick={() => toggleSidebar()}
+        >
+        </Button>
+      )}
+      
+      <Sidebar collapsible="icon" {...props}>
+        <SidebarHeader className="flex items-center justify-start h-16" onClick={iconClicked}>
+          {collapsed ? (
+            <Image src="/images/icon-no-bg.png" alt="Icon" width={48} height={40} />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center ml-2">
+              <Image src="/images/icon-no-bg.png" alt="Icon" width={48} height={40} className="h-10 w-10"/>
+              <span className="text-2xl font-extrabold p-2 flex-1">NoPWNIntended</span>
+            </div>
+          )}
+        </SidebarHeader>
+        <SidebarContent>
+          <NavMain
+            items={navItems}
+            activeTool={activeTool}
+            onToolSelect={handleToolSelect}
+            sidebarCollapsed={collapsed}
+          />
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser/>
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+    </>
+  );
 }
 
