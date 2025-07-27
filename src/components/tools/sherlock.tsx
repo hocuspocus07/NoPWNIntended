@@ -15,8 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useEffect } from "react"
 
-export function SherlockTool() {
+export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
   const [username, setUsername] = useState("")
   const [options, setOptions] = useState({
     timeout: 60,
@@ -33,38 +34,55 @@ export function SherlockTool() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleRunSherlock = async () => {
-    if (!username) {
-      toast("Please enter a username")
-      return
-    }
-    
-    setIsLoading(true)
-    setError(null)
-    
-    try {
-      let command = `sherlock ${username}`
-      
-      if (options.timeout !== 60) command += ` --timeout ${options.timeout}`
-      if (!options.printFound) command += " --no-found"
-      if (options.printNotFound) command += " --print-not-found"
-      if (options.csv) command += " --csv"
-      if (options.json) command += " --json"
-      if (options.site) command += ` --site ${options.site}`
-      if (options.proxy) command += ` --proxy ${options.proxy}`
-      if (options.tor) command += " --tor"
-      if (options.uniqueTor) command += " --unique-tor"
-      
-      console.log(command)
-      toast.success("Generated command: " + command)
-    } catch (err) {
-      setError("Failed to generate command")
-      toast.error("Error generating command")
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  useEffect(() => {
+    onRegisterScan(async () => {
+      if (!username) {
+        throw new Error("Please enter a username")
+      }
+      let token = localStorage.getItem("access_token");
+      if (!token) {
+        const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
+        if (supa) {
+          try {
+            token = JSON.parse(supa).access_token;
+          } catch (e) {
+            token = null;
+          }
+        }
+      }
+      console.log("Token used for fetch:", token);
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch("/api/osint/sherlock", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            username,
+            options
+          })
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || "Search failed")
+        }
+
+        const result = await response.json()
+        return typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2)
+      } catch (err) {
+        console.error("Search error:", err)
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    })
+  }, [username, options, onRegisterScan])
 
   return (
     <Card className="w-full">
@@ -85,14 +103,14 @@ export function SherlockTool() {
               onChange={(e) => setUsername(e.target.value)}
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="site">Specific Site</Label>
             <Input
               id="site"
               placeholder="twitter,github,etc."
               value={options.site}
-              onChange={(e) => setOptions({...options, site: e.target.value})}
+              onChange={(e) => setOptions({ ...options, site: e.target.value })}
             />
           </div>
         </div>
@@ -112,42 +130,42 @@ export function SherlockTool() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="print-found" 
+                    <Switch
+                      id="print-found"
                       checked={options.printFound}
-                      onCheckedChange={(checked) => setOptions({...options, printFound: checked})}
+                      onCheckedChange={(checked) => setOptions({ ...options, printFound: checked })}
                     />
                     <Label htmlFor="print-found">Print found accounts</Label>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="print-not-found" 
+                    <Switch
+                      id="print-not-found"
                       checked={options.printNotFound}
-                      onCheckedChange={(checked) => setOptions({...options, printNotFound: checked})}
+                      onCheckedChange={(checked) => setOptions({ ...options, printNotFound: checked })}
                     />
                     <Label htmlFor="print-not-found">Print not found accounts</Label>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="csv" 
+                    <Switch
+                      id="csv"
                       checked={options.csv}
-                      onCheckedChange={(checked) => setOptions({...options, csv: checked})}
+                      onCheckedChange={(checked) => setOptions({ ...options, csv: checked })}
                     />
                     <Label htmlFor="csv">CSV output</Label>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="json" 
+                    <Switch
+                      id="json"
                       checked={options.json}
-                      onCheckedChange={(checked) => setOptions({...options, json: checked})}
+                      onCheckedChange={(checked) => setOptions({ ...options, json: checked })}
                     />
                     <Label htmlFor="json">JSON output</Label>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="timeout">Timeout (seconds)</Label>
@@ -157,35 +175,35 @@ export function SherlockTool() {
                       min="10"
                       max="300"
                       value={options.timeout}
-                      onChange={(e) => setOptions({...options, timeout: Number(e.target.value)})}
+                      onChange={(e) => setOptions({ ...options, timeout: Number(e.target.value) })}
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="proxy">Proxy (host:port)</Label>
                     <Input
                       id="proxy"
                       placeholder="127.0.0.1:8080"
                       value={options.proxy}
-                      onChange={(e) => setOptions({...options, proxy: e.target.value})}
+                      onChange={(e) => setOptions({ ...options, proxy: e.target.value })}
                     />
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="tor" 
+                    <Switch
+                      id="tor"
                       checked={options.tor}
-                      onCheckedChange={(checked) => setOptions({...options, tor: checked})}
+                      onCheckedChange={(checked) => setOptions({ ...options, tor: checked })}
                     />
                     <Label htmlFor="tor">Use Tor</Label>
                   </div>
-                  
+
                   {options.tor && (
                     <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="unique-tor" 
+                      <Switch
+                        id="unique-tor"
                         checked={options.uniqueTor}
-                        onCheckedChange={(checked) => setOptions({...options, uniqueTor: checked})}
+                        onCheckedChange={(checked) => setOptions({ ...options, uniqueTor: checked })}
                       />
                       <Label htmlFor="unique-tor">Unique Tor circuit per site</Label>
                     </div>
@@ -196,16 +214,6 @@ export function SherlockTool() {
           )}
         </div>
 
-        <Button
-          onClick={handleRunSherlock}
-          disabled={isLoading || !username}
-          className="flex items-center"
-        >
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          <Search className="mr-2 h-4 w-4" />
-          Search Username
-        </Button>
-        
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">
             {error}

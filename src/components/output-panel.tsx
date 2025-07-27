@@ -15,6 +15,18 @@ export function OutputPanel({ output, isLoading }: {
     toast("Output copied to clipboard")
   }
 
+  const formattedOutput = () => {
+    try {
+      // If output is JSON, pretty print it
+      if (output.startsWith("{") || output.startsWith("[")) {
+        return JSON.stringify(JSON.parse(output), null, 2);
+      }
+      return output;
+    } catch {
+      return output;
+    }
+  };
+
   return (
     <div className="flex h-full flex-col text-foreground">
       <div className="flex items-center justify-between border-b p-4">
@@ -37,7 +49,7 @@ export function OutputPanel({ output, isLoading }: {
             <span>Scanning...</span>
           </div>
         ) : output ? (
-          <pre className="font-mono text-sm">{output}</pre>
+          <pre className="font-mono text-sm">{formattedOutput()}</pre>
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             No scan results yet. Run a scan to see output.

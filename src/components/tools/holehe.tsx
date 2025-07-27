@@ -15,8 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useEffect } from "react"
 
-export function HoleheTool() {
+export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
   const [email, setEmail] = useState("")
   const [options, setOptions] = useState({
     onlyUsed: false,
@@ -35,34 +36,63 @@ export function HoleheTool() {
     { value: "csv", label: "CSV" },
   ]
 
-  const handleRunHolehe = async () => {
-    if (!email) {
-      toast("Please enter an email address")
-      return
-    }
-    
-    setIsLoading(true)
-    setError(null)
-    
-    try {
-      let command = `holehe ${email}`
+   useEffect(() => {
+    onRegisterScan(async () => {
+      if (!email) {
+        throw new Error("Please enter an email address")
+      }
+
+      // Validate email format
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error("Please enter a valid email address")
+      }
+
+      // Get the current session
+      let token = localStorage.getItem("access_token");
+      if (!token) {
+        const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
+        if (supa) {
+          try {
+            token = JSON.parse(supa).access_token;
+          } catch (e) {
+            token = null;
+          }
+        }
+      }
+      console.log("Token used for fetch:", token);
+
+      setIsLoading(true)
+      setError(null)
       
-      if (options.onlyUsed) command += " --only-used"
-      if (options.verbose) command += " --verbose"
-      if (options.timeout !== 5) command += ` --timeout ${options.timeout}`
-      if (options.exclude) command += ` --exclude ${options.exclude}`
-      if (options.outputFormat !== "text") command += ` --output-format ${options.outputFormat}`
-      
-      console.log(command)
-      toast.success("Generated command: " + command)
-    } catch (err) {
-      setError("Failed to generate command")
-      toast.error("Error generating command")
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+      try {
+        const response = await fetch("/api/osint/holehe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            email,
+            options
+          })
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || "Email check failed")
+        }
+
+        const result = await response.json()
+        return typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2)
+      } catch (err) {
+        console.error("Holehe error:", err)
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    })
+  }, [email, options, onRegisterScan])
+
 
   return (
     <Card className="w-full">
@@ -157,16 +187,6 @@ export function HoleheTool() {
             </div>
           )}
         </div>
-
-        <Button
-          onClick={handleRunHolehe}
-          disabled={isLoading || !email}
-          className="flex items-center"
-        >
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          <Search className="mr-2 h-4 w-4" />
-          Check Email Breaches
-        </Button>
         
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">

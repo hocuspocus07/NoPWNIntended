@@ -23,64 +23,6 @@ interface ToolOptionsProps {
 }
 
 function ToolOptions({ activeTool, onRegisterScan }: ToolOptionsProps) {
-    useEffect(() => {
-        const registerScanFunction = async () => {
-            if (activeTool === "port-scanner") {
-                onRegisterScan(async () => {
-                    await new Promise((res) => setTimeout(res, 1000))
-                    return `hi`
-                })
-            } else if (activeTool === "subdomain-finder") {
-                onRegisterScan(async () => {
-                    await new Promise((res) => setTimeout(res, 1000))
-                    return `hi`
-                })
-            } else if (activeTool === "whois-lookup") {
-                onRegisterScan(async () => {
-                    return `hi`
-                })
-            } else if (activeTool === "web-scanner") {
-                onRegisterScan(async () => {
-                    console.log("hi")
-                    return "hi"
-                })
-            } else if (activeTool === "ssl-analyzer") {
-                onRegisterScan(async () => {
-                    console.log("hi")
-                    return "hi"
-                })
-            }  else if (activeTool === "directory-brute-forcer") {
-                onRegisterScan(async () => {
-                    console.log("hi")
-                    return "hi"
-                })
-            } else if (activeTool === "sqli-scanner") {
-                onRegisterScan(async () => {
-                    console.log("hi")
-                    return "hi"
-                })
-            } else if (activeTool === "xss-tester") {
-                onRegisterScan(async () => {
-                    console.log("hi")
-                    return "hi"
-                })
-            }else if (activeTool === "encoder/decoder") {
-                onRegisterScan(async () => {
-                    console.log("hi")
-                    return "hi"
-                })
-            }else if (activeTool === "hash-cracker") {
-                onRegisterScan(async () => {
-                    console.log("hi")
-                    return "hi"
-                })
-            }else {
-                onRegisterScan(async () => "Please select a valid tool")
-            }
-        }
-
-        registerScanFunction()
-    }, [activeTool, onRegisterScan])
 
     const handleEncoderDecoderOutput = (output: string) => {
         console.log("Encoder/Decoder output:", output)
@@ -106,9 +48,9 @@ function ToolOptions({ activeTool, onRegisterScan }: ToolOptionsProps) {
             {activeTool==="jwt-encoder/decoder" && <JwtTool/>}
             {activeTool==="forensics-tool" && <ForensicsTool/>}
             {activeTool==="reverse-engineering" && <ReverseEngineeringTool/>}
-            {activeTool==="holehe"&& <HoleheTool/>}
-            {activeTool==="sherlock"&& <SherlockTool/>}
-            {activeTool==="exiftool" && <ExifTool/>}
+            {activeTool==="holehe"&& <HoleheTool onRegisterScan={onRegisterScan}/>}
+            {activeTool==="sherlock"&& <SherlockTool onRegisterScan={onRegisterScan}/>}
+            {activeTool==="exiftool" && <ExifTool onRegisterScan={onRegisterScan}/>}
             {!activeTool && <div>Select a tool from the sidebar</div>}
         </div>
     )

@@ -10,5 +10,5 @@ services:
       - ../package-lock.json:/app/package-lock.json
       - C:/Users/Lenovo/Desktop/coding/next tuts/no-pwn-intended/docker/scripts:/docker/scripts
     ports:
-      - "3000:3000"
+      - "3001:3000"
     command: npm run dev                    
