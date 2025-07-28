@@ -45,7 +45,7 @@ function ToolOptions({ activeTool, onRegisterScan, onToolChange }: ToolOptionsPr
             {activeTool === "sqli-scanner" && <SqlInjectionScanner />}
             {activeTool === "xss-tester" && <XssTester />}
             {activeTool === "encoder/decoder" && <EncoderDecoder onOutputChange={handleEncoderDecoderOutput} />}
-            {activeTool === "hash-cracker" && <HashCracker onOutputChange={handleEncoderDecoderOutput} />}
+            {activeTool === "hash-cracker" && <HashCracker onRegisterScan={onRegisterScan}/>}
             {activeTool === "jwt-encoder/decoder" && <JwtTool />}
             {activeTool === "forensics-tool" && <ForensicsTool />}
             {activeTool === "reverse-engineering" && <ReverseEngineeringTool />}
