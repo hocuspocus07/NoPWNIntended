@@ -1,4 +1,3 @@
-// components/tools/hash-cracker.tsx
 "use client"
 
 import { useState, useEffect } from "react"
