@@ -1,13 +1,12 @@
-// components/tools/web-scanner.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Search, ChevronDown, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
+import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import {
   Select,
@@ -17,19 +16,118 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-export function WebScannerPanel() {
+export function WebScanner({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
   const [url, setUrl] = useState("")
+  const [options, setOptions] = useState({
+    tool: "nikto" as "nikto" | "wpscan" | "skipfish",
+    aggressiveness: "medium" as "low" | "medium" | "high" | "insane",
+    scanHidden: false
+  })
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [tool, setTool] = useState("nikto") // Default tool
-  const [aggressiveness, setAggressiveness] = useState("medium")
-  const [scanHidden, setScanHidden] = useState(false)
+
+   useEffect(() => {
+  onRegisterScan(async () => {
+    if (!url.trim()) {
+      throw new Error("Please enter a target URL");
+    }
+
+    // Validate URL format
+    if (!url.match(/^https?:\/\/[^\s\/$.?#].[^\s]*$/i)) {
+      throw new Error("Invalid URL format. Must start with http:// or https://");
+    }
+
+    let token = localStorage.getItem("access_token");
+    if (!token) {
+      const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
+      if (supa) {
+        try {
+          token = JSON.parse(supa).access_token;
+        } catch (e) {
+          token = null;
+        }
+      }
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      let endpoint = "";
+      let body: any = { target: url };
+      
+      switch(options.tool) {
+        case "nikto":
+          endpoint = "/api/vuln-assessment/web-scanner/nikto";
+          body = { 
+            target: url,
+            aggressiveness: options.aggressiveness 
+          };
+          break;
+        case "wpscan":
+          endpoint = "/api/vuln-assessment/web-scanner/wpscan";
+          body = { 
+            target: url,
+            scanOpts: {
+              scanHidden: options.scanHidden,
+              aggressiveness: options.aggressiveness
+            }
+          };
+          break;
+        case "skipfish":
+          endpoint = "/api/vuln-assessment/web-scanner/skipfish";
+          body = { 
+            target: url,
+            aggressiveness: options.aggressiveness 
+          };
+          break;
+      }
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Web scan failed");
+      }
+
+      const result = await response.json();
+      
+      // // Handle Skipfish response differently
+      // if (options.tool === "skipfish") {
+      //   return JSON.stringify({
+      //     output: result.data.output,
+      //     reportContent: result.data.reportContent,
+      //     tool: "skipfish"
+      //   });
+      // }
+      
+      // Default return for other tools
+      return JSON.stringify({
+        output: result.data,
+        tool: options.tool
+      });
+      
+    } catch (err) {
+      console.error("Web scan error:", err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  });
+}, [url, options, onRegisterScan]);
+
 
   const tools = [
     { value: "nikto", label: "Nikto" },
     { value: "wpscan", label: "WPScan" },
-    { value: "arachni", label: "Arachni" },
     { value: "skipfish", label: "Skipfish" },
   ]
 
@@ -62,7 +160,13 @@ export function WebScannerPanel() {
           
           <div className="space-y-2">
             <Label>Scanner Tool</Label>
-            <Select value={tool} onValueChange={setTool}>
+            <Select 
+              value={options.tool} 
+              onValueChange={(value) => setOptions({
+                ...options,
+                tool: value as typeof options.tool
+              })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select tool" />
               </SelectTrigger>
@@ -98,8 +202,11 @@ export function WebScannerPanel() {
                 <div className="space-y-2">
                   <Label>Aggressiveness</Label>
                   <Select 
-                    value={aggressiveness} 
-                    onValueChange={setAggressiveness}
+                    value={options.aggressiveness} 
+                    onValueChange={(value) => setOptions({
+                      ...options,
+                      aggressiveness: value as typeof options.aggressiveness
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select level" />
@@ -117,12 +224,15 @@ export function WebScannerPanel() {
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="scan-hidden"
-                    checked={scanHidden}
-                    onCheckedChange={setScanHidden}
-                    disabled={tool !== "wpscan"}
+                    checked={options.scanHidden}
+                    onCheckedChange={(checked) => setOptions({
+                      ...options,
+                      scanHidden: checked
+                    })}
+                    disabled={options.tool !== "wpscan"}
                   />
                   <Label htmlFor="scan-hidden">
-                    {tool === "wpscan" ? "Scan Hidden" : "Scan Hidden (WPScan only)"}
+                    {options.tool === "wpscan" ? "Scan Hidden" : "Scan Hidden (WPScan only)"}
                   </Label>
                 </div>
               </div>

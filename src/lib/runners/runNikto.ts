@@ -21,3 +21,7 @@ export async function runNikto(
     throw new Error(`Nikto scan failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
+export type NiktoScanRequest = {
+  target: string;
+  aggressiveness: 'low' | 'medium' | 'high' | 'insane';
+};

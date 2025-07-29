@@ -4,8 +4,8 @@ import { useEffect } from "react"
 import { NmapPanel } from "./tools/nmap-scan"
 import { SubdomainPanel } from "./tools/subdomain-scan"
 import { WhoisPanel } from "./tools/whois"
-import { WebScannerPanel } from "./tools/web-scanner"
-import { SslScannerPanel } from "./tools/ssl-scan"
+import { WebScanner } from "./tools/web-scanner"
+import { SslScanner } from "./tools/ssl-scan"
 import { DirectoryBruteForcer } from "./tools/directory-scanner"
 import { SqlInjectionScanner } from "./tools/sqli-scanner"
 import { XssTester } from "./tools/xss-tester"
@@ -39,8 +39,8 @@ function ToolOptions({ activeTool, onRegisterScan, onToolChange }: ToolOptionsPr
                 <NmapPanel onRegisterScan={onRegisterScan} />)}
             {activeTool === "subdomain-finder" && <SubdomainPanel onRegisterScan={onRegisterScan} />}
             {activeTool === "whois-lookup" && <WhoisPanel onRegisterScan={onRegisterScan} />}
-            {activeTool === "web-scanner" && <WebScannerPanel />}
-            {activeTool === "ssl-analyzer" && <SslScannerPanel />}
+            {/* {activeTool === "web-scanner" && <WebScanner onRegisterScan={onRegisterScan}/>} */}
+            {activeTool === "ssl-analyzer" && <SslScanner onRegisterScan={onRegisterScan} />}
             {activeTool === "directory-brute-forcer" && <DirectoryBruteForcer />}
             {activeTool === "sqli-scanner" && <SqlInjectionScanner />}
             {activeTool === "xss-tester" && <XssTester />}

@@ -5,40 +5,34 @@ import { Button } from "@/components/ui/button"
 import { Copy, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { SubdomainResults } from "./subdomain-results"
+import { useEffect, useState } from "react"
+
 export function OutputPanel({ output, isLoading }: {
   output: string,
   isLoading: boolean
 }) {
-  let parsedData: {
-    message?: string
-    subdomains?: Array<{ subdomain: string, source: string }>
-  } | null = null
+  const [parsedOutput, setParsedOutput] = useState<{
+    output?: string;
+    reportContent?: string;
+    tool?: string;
+  } | null>(null);
 
-  try {
-    parsedData = JSON.parse(output)
-  } catch {
-    parsedData = null
-  }
-
+  useEffect(() => {
+    if (output) {
+      try {
+        setParsedOutput(JSON.parse(output));
+      } catch {
+        setParsedOutput({ output });
+      }
+    } else {
+      setParsedOutput(null);
+    }
+  }, [output]);
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(output)
-    toast("Output copied to clipboard")
-  }
-
-  const formattedOutput = () => {
-    try {
-      // If output is JSON, pretty print it
-      if (output.startsWith("{") || output.startsWith("[")) {
-        return JSON.stringify(JSON.parse(output), null, 2);
-      }
-      // Replace literal \n sequences with actual newline characters
-      return output.replace(/\\n/g, "\n");
-    } catch {
-      return output.replace(/\\n/g, "\n");
-    }
+    navigator.clipboard.writeText(parsedOutput?.output || "");
+    toast("Output copied to clipboard");
   };
-
 
   return (
     <div className="flex h-full flex-col text-foreground max-h-full">
@@ -48,7 +42,7 @@ export function OutputPanel({ output, isLoading }: {
           variant="ghost"
           size="sm"
           onClick={copyToClipboard}
-          disabled={!output}
+          disabled={!parsedOutput?.output}
         >
           <Copy className="mr-2 h-4 w-4" />
           Copy
@@ -61,15 +55,18 @@ export function OutputPanel({ output, isLoading }: {
             <Loader2 className="mr-2 h-8 w-8 animate-spin" />
             <span>Scanning...</span>
           </div>
-        ) : parsedData?.subdomains ? (
-          <SubdomainResults
-            results={parsedData.subdomains}
-            initialMessage={parsedData.message || "Found subdomains"}
-          />
-        ) : output ? (
+        ) : parsedOutput?.tool === "skipfish" && parsedOutput.reportContent ? (
+          <div className="w-full h-full">
+            <iframe 
+              srcDoc={parsedOutput.reportContent}
+              className="w-full h-full border-none"
+              title="Skipfish Report"
+            />
+          </div>
+        ) : parsedOutput?.output ? (
           <div className="w-full overflow-x-auto">
             <pre className="font-mono text-sm whitespace-pre-wrap w-full block">
-              {formattedOutput()}
+              {parsedOutput.output}
             </pre>
           </div>
         ) : (
@@ -79,5 +76,5 @@ export function OutputPanel({ output, isLoading }: {
         )}
       </ScrollArea>
     </div>
-  )
+  );
 }

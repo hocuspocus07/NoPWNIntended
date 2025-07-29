@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Search, ChevronDown, ChevronRight, Shield } from "lucide-react"
+import { Loader2, Shield, ChevronDown, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
+import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import {
   Select,
@@ -15,31 +15,88 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-export function SslScannerPanel() {
+import { ansiToHtml } from "@/utils/ansi"
+export function SslScanner({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
   const [target, setTarget] = useState("")
+  const [options, setOptions] = useState({
+    startTls: "none" as "none" | "smtp" | "ftp" | "imap" | "pop3" | "ldap",
+    tlsVersions: {
+      ssl2: false,
+      ssl3: false,
+      tls10: false,
+      tls11: false,
+      tls12: true,
+      tls13: true
+    },
+    scanOpts: {
+      showCertificates: false,
+      checkHeartbleed: true,
+      checkCompression: true,
+      checkFallback: true,
+      showSigs: false
+    }
+  })
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-  
-  // SSL/TLS version options
-  const [tlsVersions, setTlsVersions] = useState({
-    ssl2: false,
-    ssl3: false,
-    tls10: false,
-    tls11: false,
-    tls12: true,
-    tls13: true
-  })
 
-  // Scan options
-  const [scanOptions, setScanOptions] = useState({
-    showCertificates: false,
-    checkHeartbleed: true,
-    checkCompression: true,
-    checkFallback: true,
-    showSigs: false
-  })
+  useEffect(() => {
+    onRegisterScan(async () => {
+      if (!target.trim()) {
+        throw new Error("Please enter a target host:port")
+      }
+
+      let token = localStorage.getItem("access_token");
+      if (!token) {
+        const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
+        if (supa) {
+          try {
+            token = JSON.parse(supa).access_token;
+          } catch (e) {
+            token = null;
+          }
+        }
+      }
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch("/api/vuln-assessment/ssl-analyser", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            target,
+            startTls: options.startTls,
+            scanOpts: {
+              certs: options.scanOpts.showCertificates,
+              heartbleed: options.scanOpts.checkHeartbleed,
+              compression: options.scanOpts.checkCompression,
+              fallback: options.scanOpts.checkFallback,
+              signatures: options.scanOpts.showSigs
+            }
+          })
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || "SSL scan failed")
+        }
+
+        const result = await response.json()
+        return ansiToHtml(result.data);
+        return result.data
+      } catch (err) {
+        console.error("SSL scan error:", err)
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    })
+  }, [target, options, onRegisterScan])
 
   const startTlsProtocols = [
     { value: "none", label: "None" },
@@ -49,19 +106,24 @@ export function SslScannerPanel() {
     { value: "pop3", label: "POP3" },
     { value: "ldap", label: "LDAP" }
   ]
-  const [startTls, setStartTls] = useState("none")
 
-  const handleTlsVersionChange = (version: keyof typeof tlsVersions) => {
-    setTlsVersions(prev => ({
+  const handleTlsVersionChange = (version: keyof typeof options.tlsVersions) => {
+    setOptions(prev => ({
       ...prev,
-      [version]: !prev[version]
+      tlsVersions: {
+        ...prev.tlsVersions,
+        [version]: !prev.tlsVersions[version]
+      }
     }))
   }
 
-  const handleScanOptionChange = (option: keyof typeof scanOptions) => {
-    setScanOptions(prev => ({
+  const handleScanOptionChange = (option: keyof typeof options.scanOpts) => {
+    setOptions(prev => ({
       ...prev,
-      [option]: !prev[option]
+      scanOpts: {
+        ...prev.scanOpts,
+        [option]: !prev.scanOpts[option]
+      }
     }))
   }
 
@@ -87,7 +149,13 @@ export function SslScannerPanel() {
           
           <div className="space-y-2">
             <Label>STARTTLS Protocol</Label>
-            <Select value={startTls} onValueChange={setStartTls}>
+            <Select 
+              value={options.startTls} 
+              onValueChange={(value) => setOptions({
+                ...options,
+                startTls: value as typeof options.startTls
+              })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select protocol" />
               </SelectTrigger>
@@ -125,7 +193,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="ssl2"
-                      checked={tlsVersions.ssl2}
+                      checked={options.tlsVersions.ssl2}
                       onCheckedChange={() => handleTlsVersionChange("ssl2")}
                     />
                     <Label htmlFor="ssl2">SSLv2</Label>
@@ -133,7 +201,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="ssl3"
-                      checked={tlsVersions.ssl3}
+                      checked={options.tlsVersions.ssl3}
                       onCheckedChange={() => handleTlsVersionChange("ssl3")}
                     />
                     <Label htmlFor="ssl3">SSLv3</Label>
@@ -141,7 +209,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="tls10"
-                      checked={tlsVersions.tls10}
+                      checked={options.tlsVersions.tls10}
                       onCheckedChange={() => handleTlsVersionChange("tls10")}
                     />
                     <Label htmlFor="tls10">TLS 1.0</Label>
@@ -149,7 +217,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="tls11"
-                      checked={tlsVersions.tls11}
+                      checked={options.tlsVersions.tls11}
                       onCheckedChange={() => handleTlsVersionChange("tls11")}
                     />
                     <Label htmlFor="tls11">TLS 1.1</Label>
@@ -157,7 +225,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="tls12"
-                      checked={tlsVersions.tls12}
+                      checked={options.tlsVersions.tls12}
                       onCheckedChange={() => handleTlsVersionChange("tls12")}
                     />
                     <Label htmlFor="tls12">TLS 1.2</Label>
@@ -165,7 +233,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="tls13"
-                      checked={tlsVersions.tls13}
+                      checked={options.tlsVersions.tls13}
                       onCheckedChange={() => handleTlsVersionChange("tls13")}
                     />
                     <Label htmlFor="tls13">TLS 1.3</Label>
@@ -179,7 +247,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="show-certs"
-                      checked={scanOptions.showCertificates}
+                      checked={options.scanOpts.showCertificates}
                       onCheckedChange={() => handleScanOptionChange("showCertificates")}
                     />
                     <Label htmlFor="show-certs">Show Certificates</Label>
@@ -187,7 +255,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="heartbleed"
-                      checked={scanOptions.checkHeartbleed}
+                      checked={options.scanOpts.checkHeartbleed}
                       onCheckedChange={() => handleScanOptionChange("checkHeartbleed")}
                     />
                     <Label htmlFor="heartbleed">Check Heartbleed</Label>
@@ -195,7 +263,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="compression"
-                      checked={scanOptions.checkCompression}
+                      checked={options.scanOpts.checkCompression}
                       onCheckedChange={() => handleScanOptionChange("checkCompression")}
                     />
                     <Label htmlFor="compression">Check Compression</Label>
@@ -203,7 +271,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="fallback"
-                      checked={scanOptions.checkFallback}
+                      checked={options.scanOpts.checkFallback}
                       onCheckedChange={() => handleScanOptionChange("checkFallback")}
                     />
                     <Label htmlFor="fallback">Check Fallback</Label>
@@ -211,7 +279,7 @@ export function SslScannerPanel() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="show-sigs"
-                      checked={scanOptions.showSigs}
+                      checked={options.scanOpts.showSigs}
                       onCheckedChange={() => handleScanOptionChange("showSigs")}
                     />
                     <Label htmlFor="show-sigs">Show Signatures</Label>

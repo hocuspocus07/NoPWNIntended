@@ -59,9 +59,9 @@ const data = {
       title: "Vuln Assessment",
       icon: ShieldAlert,
       items: [
-        {
-          title: "Web Scanner",
-        },
+        // {
+        //   title: "Web Scanner",
+        // },
         {
           title: "SSL Analyzer",
         },

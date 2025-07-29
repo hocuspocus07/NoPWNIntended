@@ -35,7 +35,8 @@ RUN apt-get update && \
     binutils \
     gdb \
     libewf2 \
-    ewf-tools\
+    ewf-tools \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && \
@@ -105,6 +106,7 @@ RUN echo "=== Tool Verification ===" && \
     echo "Hashcat: $(hashcat --version | head -n 1)" && \
     echo "John: installed" && \
     echo "TestSSL: installed" && \
+    echo "jq: $(jq --version)" && \
     echo "All essential tools verified"
 
 # Project note
@@ -112,6 +114,7 @@ RUN echo -e "\n\nNote: For NoSQLMap, use the official Docker image:\ndocker run 
 
 # Copy your project scripts in
 COPY docker/scripts/ /docker/scripts/
+RUN chmod +x /docker/scripts/*.sh
 
 # If this image should launch your Next.js dev server by default
 CMD ["npm", "run", "dev"]

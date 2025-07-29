@@ -27,10 +27,16 @@ export async function runWPScan(
   ];
 
   try {
-    // execFile's first arg is the command, second is the array of args
     const { stdout } = await asyncExecFile("docker", ["exec", container, ...args]);
     return stdout;
   } catch (error) {
     throw new Error(`WPScan failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
+export type WPScanRequest = {
+  target: string;
+  scanOpts: {
+    scanHidden: boolean;
+    aggressiveness: 'low' | 'medium' | 'high' | 'insane';
+  };
+};

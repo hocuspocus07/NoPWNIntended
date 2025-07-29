@@ -1,27 +1,47 @@
 #!/bin/bash
+set -e
 
-TARGET=$1
-AGGRESSIVE=$2  
+TARGET="$1"
+AGGRESSIVENESS="$2"
+OUTDIR="/tmp/skipfish-out-$$"
+LOG_FILE="/tmp/skipfish-$$.log"
 
-OUTDIR="/tmp/skipfish-out-$(date +%s)"
+if ! command -v skipfish > /dev/null; then
+  echo '{"status":"error","output":"Skipfish not installed","log":"Not found"}'
+  exit 1
+fi
 
-case "$AGGRESSIVE" in
-  low)
-    SKIPFISH_OPTS="-g 10 -m 2 -t 5"  # low connections, shallow scan
-    ;;
-  medium)
-    SKIPFISH_OPTS="-g 20 -m 3 -t 10"
-    ;;
-  high)
-    SKIPFISH_OPTS="-g 50 -m 4 -t 20"
-    ;;
-  insane)
-    SKIPFISH_OPTS="-g 100 -m 5 -t 40"  # very aggressive
-    ;;
-  *)
-    SKIPFISH_OPTS=""
-    ;;
+if ! command -v jq > /dev/null; then
+  echo '{"status":"error","output":"jq not installed","log":"Not found"}'
+  exit 1
+fi
+
+case "$AGGRESSIVENESS" in
+  low)    OPTS="-g 10 -m 2 -t 5" ;;
+  medium) OPTS="-g 20 -m 3 -t 10" ;;
+  high)   OPTS="-g 50 -m 4 -t 20" ;;
+  insane) OPTS="-g 100 -m 5 -t 40" ;;
+  *)      OPTS="" ;;
 esac
 
-skipfish $SKIPFISH_OPTS -o "$OUTDIR" "$TARGET"
-echo -e "\n[+] Skipfish scan complete. HTML report saved to: $OUTDIR/index.html"
+timeout 300 skipfish $OPTS -o "$OUTDIR" "$TARGET" >> "$LOG_FILE" 2>&1
+RC=$?
+
+if [ $RC -eq 124 ]; then
+  echo '{"status":"error","output":"Timeout","log":'$(jq -Rs . < "$LOG_FILE")'}'
+  exit 1
+elif [ $RC -ne 0 ]; then
+  echo '{"status":"error","output":"Failed","log":'$(jq -Rs . < "$LOG_FILE")'}'
+  exit 1
+fi
+
+REPORT="$OUTDIR/index.html"
+if [ -f "$REPORT" ]; then
+  REPORT_CONTENT=$(jq -Rs . < "$REPORT")
+  echo '{"status":"success","output":"Scan complete","reportContent":'"$REPORT_CONTENT"',"log":'$(jq -Rs . < "$LOG_FILE")'}'
+else
+  echo '{"status":"error","output":"No report generated","log":'$(jq -Rs . < "$LOG_FILE")'}'
+  exit 1
+fi
+
+rm -rf "$OUTDIR" "$LOG_FILE"
