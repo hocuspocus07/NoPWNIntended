@@ -12,6 +12,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider
       attribute="class"
+      themes={["light", "dark", "solarized-light", "oceanic-next", "dracula", "nord", "gruvbox-light", "system"]}
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
