@@ -34,6 +34,7 @@ RUN apt-get update && \
     radare2 \
     binutils \
     gdb \
+    gdb-multiarch\
     libewf2 \
     ewf-tools \
     jq \

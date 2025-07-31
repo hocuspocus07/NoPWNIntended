@@ -1,6 +1,6 @@
 "use client"
-
-import { useState, useCallback } from "react"
+import { FilePreview } from "../filePreview"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-export function ReverseEngineeringTool() {
+export function ReverseEngineeringTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [tool, setTool] = useState("radare2")
@@ -65,7 +65,7 @@ export function ReverseEngineeringTool() {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(false)
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const droppedFile = e.dataTransfer.files[0]
       setFile(droppedFile)
@@ -78,46 +78,76 @@ export function ReverseEngineeringTool() {
     }
   }, [])
 
-  const handleReverseEngineer = async () => {
-    if (!file) {
-      toast("Please select a file")
-      return
-    }
-    setIsLoading(true)
-    setError(null)
-    try {
-      let command = ""
-      const fileName = file.name
-      
-      switch (tool) {
-        case "radare2":
-          if (r2Command === "info")      command = `radare2 -c 'ii' -q0 ${fileName}`
-          else if (r2Command === "functions") command = `radare2 -c 'afl' -q0 ${fileName}`
-          else if (r2Command === "disasm")   command = `radare2 -c 'pdf @ entry0' -q0 ${fileName}`
-          break
-        case "gdb":
-          command = `gdb ${fileName}`
-          break
-        case "objdump":
-          command = `objdump ${objdumpArgs} ${fileName}`
-          break
-        case "strings":
-          command = `strings ${fileName}`
-          break
-        case "xxd":
-          command = `xxd -l ${xxdLength} ${fileName}`
-          break
+  useEffect(() => {
+    onRegisterScan(async () => {
+      if (!file) {
+        throw new Error("Please select a file")
       }
-      console.log(command)
-      toast.success("Generated command: " + command)
-    } catch (err) {
-      setError("Failed to generate command")
-      toast.error("Error generating command")
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        let endpoint = ""
+        let response: Response
+
+        // Get auth token
+        let token = localStorage.getItem("access_token");
+        if (!token) {
+          const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
+          if (supa) {
+            try {
+              token = JSON.parse(supa).access_token;
+            } catch (e) {
+              token = null;
+            }
+          }
+        }
+
+        switch (tool) {
+          case "radare2":
+            endpoint = "/api/misc/reverse/radare2"
+            formData.append("mode", r2Command)
+            break
+          case "gdb":
+            endpoint = "/api/misc/reverse/gdb"
+            formData.append("cmd", gdbCommand)
+            break
+          case "objdump":
+            endpoint = "/api/misc/reverse/objdump"
+            formData.append("args", objdumpArgs)
+            break
+          case "strings":
+            endpoint = "/api/misc/reverse/strings"
+            break
+          case "xxd":
+            endpoint = "/api/misc/reverse/xxd"
+            formData.append("length", xxdLength.toString())
+            break
+        }
+
+        response = await fetch(endpoint, {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Request failed")
+        }
+
+        const data = await response.json()
+        return data.output || "No output received"
+      } catch (err) {
+        console.error("Reverse engineering error:", err)
+        throw err
+      }
+    })
+  }, [file, tool, r2Command, gdbCommand, objdumpArgs, xxdLength, onRegisterScan])
+
 
   const showAdvancedOptions = tool === "radare2" || tool === "gdb"
 
@@ -133,35 +163,37 @@ export function ReverseEngineeringTool() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Binary File</Label>
-            <div
-              className={`flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors ${
-                isDragging ? "border-primary bg-primary/10" : "border-gray-300"
-              }`}
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-            >
-              <Upload className="mb-2 h-8 w-8 text-gray-500" />
-              <p className="mb-2 text-sm text-gray-500">
-                {file 
-                  ? `Selected file: ${file.name}`
-                  : "Drag & drop a file here, or click to select"}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="relative"
+            {file ? (
+              <FilePreview file={file} onRemove={() => setFile(null)} />
+            ) : (
+              <div
+                className={`flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-gray-300"
+                  }`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
               >
-                Select File
-                <input
-                  type="file"
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  onChange={handleFileChange}
-                  accept="application/octet-stream,.bin,.exe,.so,.dll,.elf"
-                />
-              </Button>
-            </div>
+                <Upload className="mb-2 h-8 w-8 text-gray-500" />
+                <p className="mb-2 text-sm text-gray-500">
+                  Drag & drop a file here, or click to select
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="relative"
+                >
+                  Select File
+                  <input
+                    type="file"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    onChange={handleFileChange}
+                    accept="application/octet-stream,.bin,.exe,.so,.dll,.elf"
+                  />
+                </Button>
+              </div>
+            )}
+
           </div>
           <div className="space-y-2">
             <Label>Tool</Label>
@@ -267,16 +299,6 @@ export function ReverseEngineeringTool() {
             )}
           </div>
         )}
-
-        <Button
-          onClick={handleReverseEngineer}
-          disabled={isLoading || !file}
-          className="flex items-center"
-        >
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          <Search className="mr-2 h-4 w-4" />
-          Run Reverse Engineering Tool
-        </Button>
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">
             {error}

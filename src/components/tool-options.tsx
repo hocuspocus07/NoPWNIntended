@@ -47,8 +47,8 @@ function ToolOptions({ activeTool, onRegisterScan, onToolChange }: ToolOptionsPr
             {activeTool === "encoder/decoder" && <EncoderDecoder onOutputChange={handleEncoderDecoderOutput} />}
             {activeTool === "hash-cracker" && <HashCracker onRegisterScan={onRegisterScan}/>}
             {activeTool === "jwt-encoder/decoder" && <JwtTool />}
-            {activeTool === "forensics-tool" && <ForensicsTool />}
-            {activeTool === "reverse-engineering" && <ReverseEngineeringTool />}
+            {activeTool === "forensics-tool" && <ForensicsTool onRegisterScan={onRegisterScan}/>}
+            {activeTool === "reverse-engineering" && <ReverseEngineeringTool onRegisterScan={onRegisterScan}/>}
             {activeTool === "holehe" && <HoleheTool onRegisterScan={onRegisterScan} />}
             {activeTool === "sherlock" && <SherlockTool onRegisterScan={onRegisterScan} />}
             {activeTool === "exiftool" && <ExifTool onRegisterScan={onRegisterScan} />}

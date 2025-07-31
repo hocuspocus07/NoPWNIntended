@@ -4,77 +4,73 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Copy, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { SubdomainResults } from "./subdomain-results"
 import { useEffect, useState } from "react"
 
-export function OutputPanel({ output, isLoading }: {
-  output: string,
+export function OutputPanel({
+  output,
+  isLoading,
+}: {
+  output: string
   isLoading: boolean
 }) {
   const [parsedOutput, setParsedOutput] = useState<{
-    output?: string;
-    reportContent?: string;
-    tool?: string;
-  } | null>(null);
+    output?: string
+    reportContent?: string
+    tool?: string
+  } | null>(null)
 
   useEffect(() => {
     if (output) {
       try {
-        setParsedOutput(JSON.parse(output));
+        setParsedOutput(JSON.parse(output))
       } catch {
-        setParsedOutput({ output });
+        setParsedOutput({ output })
       }
     } else {
-      setParsedOutput(null);
+      setParsedOutput(null)
     }
-  }, [output]);
+  }, [output])
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(parsedOutput?.output || "");
-    toast("Output copied to clipboard");
-  };
+    navigator.clipboard.writeText(parsedOutput?.output || "")
+    toast("Output copied to clipboard")
+  }
 
   return (
-    <div className="flex h-full flex-col text-foreground max-h-full">
-      <div className="flex items-center justify-between border-b p-4">
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between border-b p-4 flex-shrink-0">
         <h3 className="font-semibold">Scan Results</h3>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={copyToClipboard}
-          disabled={!parsedOutput?.output}
-        >
+        <Button variant="ghost" size="sm" onClick={copyToClipboard} disabled={!parsedOutput?.output}>
           <Copy className="mr-2 h-4 w-4" />
           Copy
         </Button>
       </div>
-
-      <ScrollArea className="flex-1 p-4">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="mr-2 h-8 w-8 animate-spin" />
             <span>Scanning...</span>
           </div>
         ) : parsedOutput?.tool === "skipfish" && parsedOutput.reportContent ? (
-          <div className="w-full h-full">
-            <iframe 
+          <div className="h-full p-4">
+            <iframe
               srcDoc={parsedOutput.reportContent}
-              className="w-full h-full border-none"
+              className="w-full h-full border rounded"
               title="Skipfish Report"
             />
           </div>
         ) : parsedOutput?.output ? (
-          <div className="w-full overflow-x-auto">
-            <pre className="font-mono text-sm whitespace-pre-wrap w-full block">
-              {parsedOutput.output}
-            </pre>
-          </div>
+          <ScrollArea className="h-full">
+            <div className="p-4">
+              <pre className="font-mono text-sm whitespace-pre-wrap break-words">{parsedOutput.output}</pre>
+            </div>
+          </ScrollArea>
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             No scan results yet. Run a scan to see output.
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
-  );
+  )
 }

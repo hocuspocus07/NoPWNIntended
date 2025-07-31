@@ -1,41 +1,39 @@
 "use client"
+
 import { useState, useCallback, useEffect } from "react"
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable"
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import ToolOptions from "./tool-options"
 import { OutputPanel } from "./output-panel"
-import { Button } from "./ui/button"
+import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2 } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 
-export function MainSection({ activeTool }: { activeTool: string | null, activeToolTitle?: string | null }) {
+export function MainSection({ activeTool }: { activeTool: string | null; activeToolTitle?: string | null }) {
   const [output, setOutput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [scanFn, setScanFn] = useState<() => Promise<string>>(
-    () => async () => "No scan function registered."
-  )
+  const [scanFn, setScanFn] = useState<() => Promise<string>>(() => async () => "No scan function registered.")
   const [showOutput, setShowOutput] = useState(false)
   const isMobile = useIsMobile()
-const clearOutput = useCallback(() => {
-    setOutput("");
-    setShowOutput(false);
-  }, []);
+
+  const clearOutput = useCallback(() => {
+    setOutput("")
+    setShowOutput(false)
+  }, [])
+
   useEffect(() => {
-    clearOutput();
-  }, [activeTool, clearOutput]);
+    clearOutput()
+  }, [activeTool, clearOutput])
+
   const handleSubmit = async () => {
     setIsLoading(true)
     setOutput("")
-    
+
     try {
       const result = await scanFn()
       setOutput(result)
       if (isMobile) {
-        setShowOutput(true) 
+        setShowOutput(true)
       }
     } catch (err) {
       setOutput(`Scan failed: ${String(err)}`)
@@ -59,19 +57,19 @@ const clearOutput = useCallback(() => {
 
   if (isMobile) {
     return (
-      <div className="h-[calc(100vh-4rem)] w-full overflow-hidden">
+      <div className="h-[calc(100vh-4rem)] w-full flex flex-col overflow-hidden">
         {!showOutput ? (
-          <div className="flex h-full flex-col overflow-hidden">
-            <ScrollArea className="flex-1 p-6 h-full max-h-full overflow-y-scroll">
-              <ToolOptions activeTool={activeTool} onRegisterScan={registerScan} onToolChange={clearOutput} />
-            </ScrollArea>
+          <>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="p-6">
+                  <ToolOptions activeTool={activeTool} onRegisterScan={registerScan} onToolChange={clearOutput} />
+                </div>
+              </ScrollArea>
+            </div>
             {activeTool && (
-              <div className="border-t p-4">
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isLoading}
-                  className="w-full"
-                >
+              <div className="border-t p-4 flex-shrink-0">
+                <Button onClick={handleSubmit} disabled={isLoading} className="w-full">
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -83,17 +81,17 @@ const clearOutput = useCallback(() => {
                 </Button>
               </div>
             )}
-          </div>
+          </>
         ) : (
-          <div className="h-full">
-            <Button 
-              variant="ghost" 
-              onClick={() => setShowOutput(false)}
-              className="m-2"
-            >
-              ← Back to Tool
-            </Button>
-            <OutputPanel output={output} isLoading={isLoading} />
+          <div className="h-full flex flex-col overflow-hidden">
+            <div className="flex-shrink-0 p-2">
+              <Button variant="ghost" onClick={() => setShowOutput(false)}>
+                ← Back to Tool
+              </Button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <OutputPanel output={output} isLoading={isLoading} />
+            </div>
           </div>
         )}
       </div>
@@ -102,23 +100,20 @@ const clearOutput = useCallback(() => {
 
   /* Desktop Layout*/
   return (
-    <ResizablePanelGroup
-      direction="horizontal"
-      className="h-[calc(100vh-4rem)] w-full overflow-hidden rounded-lg border"
-    >
-      {/* Left Panel - Tool Options */}
-      <ResizablePanel defaultSize={50} minSize={30} className="overflow-hidden">
-        <div className="flex h-full flex-col overflow-hidden">
-          <ScrollArea className="flex-1 p-6">
-            <ToolOptions activeTool={activeTool} onRegisterScan={registerScan} />
-          </ScrollArea>
+    <div className="h-[calc(100vh-4rem)] w-full overflow-hidden">
+      <ResizablePanelGroup direction="horizontal" className="h-full w-full rounded-lg border">
+        {/* Left Panel - Tool Options */}
+        <ResizablePanel defaultSize={50} minSize={30} className="flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="p-6">
+                <ToolOptions activeTool={activeTool} onRegisterScan={registerScan} />
+              </div>
+            </ScrollArea>
+          </div>
           {activeTool && (
-            <div className="border-t p-4">
-              <Button
-                onClick={handleSubmit}
-                disabled={isLoading}
-                className="w-full"
-              >
+            <div className="border-t p-4 flex-shrink-0">
+              <Button onClick={handleSubmit} disabled={isLoading} className="w-full">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -130,15 +125,15 @@ const clearOutput = useCallback(() => {
               </Button>
             </div>
           )}
-        </div>
-      </ResizablePanel>
-      
-      <ResizableHandle withHandle />
-      
-      {/* Right Panel - Output */}
-      <ResizablePanel defaultSize={50} className="overflow-hidden">
-        <OutputPanel output={output} isLoading={isLoading} />
-      </ResizablePanel>
-    </ResizablePanelGroup>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* Right Panel - Output */}
+        <ResizablePanel defaultSize={50} className="overflow-hidden">
+          <OutputPanel output={output} isLoading={isLoading} />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
   )
 }

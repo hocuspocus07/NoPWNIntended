@@ -1,6 +1,6 @@
 "use client"
-
-import { useState, useCallback } from "react"
+import { FilePreview } from "../filePreview"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-export function ForensicsTool() {
+export function ForensicsTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -27,6 +27,7 @@ export function ForensicsTool() {
   const [binwalkExtract, setBinwalkExtract] = useState(true)
   const [partitionType, setPartitionType] = useState("auto")
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [inode, setInode] = useState("1")
 
   const forensicsTools = [
     { value: "tsk", label: "The Sleuth Kit (TSK)" },
@@ -75,43 +76,77 @@ export function ForensicsTool() {
     }
   }, [])
 
-  const handleForensics = async () => {
-    if (!file) {
-      toast("Please select a disk image file")
-      return
-    }
-    setIsLoading(true)
-    setError(null)
-    try {
-      let command = ""
-      const fileName = file.name
-
-      switch (tool) {
-        case "tsk":
-          command = `tsk_${tskCommand} ${fileName}`
-          break
-        case "binwalk":
-          command = `binwalk ${entropyScan ? "-E " : ""}${binwalkExtract ? "-e " : ""}${fileName}`
-          break
-        case "foremost":
-          command = `foremost -i ${fileName}`
-          if (foremostConfig) command += ` -c ${foremostConfig}`
-          command += ` -o output`
-          break
-        case "testdisk":
-          command = `testdisk /log /cmd ${fileName} ${partitionType}`
-          break
+  useEffect(() => {
+    onRegisterScan(async () => {
+      if (!file) {
+        throw new Error("Please select a disk image file")
       }
-      console.log(command)
-      toast.success("Command generated: " + command)
-    } catch (err) {
-      setError("Failed to generate command")
-      toast.error("Error generating command")
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        let endpoint = ""
+
+        switch (tool) {
+          case "tsk":
+            endpoint = "/api/misc/forensics/tsk"
+            formData.append("command", tskCommand)
+            if (tskCommand === "icat") {
+              formData.append("inode", inode)
+            }
+            break
+          case "binwalk":
+            endpoint = "/api/misc/forensics/binwalk"
+            formData.append("entropyScan", String(entropyScan))
+            formData.append("extractFiles", String(binwalkExtract))
+            break
+          case "foremost":
+            endpoint = "/api/misc/forensics/foremost"
+            if (foremostConfig) {
+              formData.append("configFile", foremostConfig)
+            }
+            break
+          case "testdisk":
+            endpoint = "/api/misc/forensics/testdisk"
+            formData.append("partitionType", partitionType)
+            break
+        }
+
+        // Get the auth token
+        let token = localStorage.getItem("access_token");
+        if (!token) {
+          const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
+          if (supa) {
+            try {
+              token = JSON.parse(supa).access_token;
+            } catch (e) {
+              token = null;
+            }
+          }
+        }
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Request failed")
+        }
+
+        const data = await response.json()
+        return data.output || "No output received"
+      } catch (err) {
+        console.error("Forensics error:", err)
+        throw err
+      }
+    })
+  }, [file, tool, tskCommand, inode, entropyScan, binwalkExtract, foremostConfig, partitionType, onRegisterScan])
 
   const hasAdvancedOptions = ["binwalk", "testdisk"].includes(tool)
 
@@ -127,34 +162,33 @@ export function ForensicsTool() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Disk Image File</Label>
-            <div
-              className={`flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-gray-300"
-                }`}
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-            >
-              <Upload className="mb-2 h-8 w-8 text-gray-500" />
-              <p className="mb-2 text-sm text-gray-500">
-                {file
-                  ? `Selected file: ${file.name}`
-                  : "Drag & drop a disk image here, or click to select"}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="relative"
+            {file ? (
+              <FilePreview file={file} onRemove={() => setFile(null)} />
+            ) : (
+              <div
+                className={`flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-gray-300"
+                  }`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
               >
-                Select File
-                <input
-                  type="file"
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  onChange={handleFileChange}
-                  accept=".dd,.img,.iso,.bin,.raw,.e01,.aff"
-                />
-              </Button>
-            </div>
+                <Upload className="mb-2 h-8 w-8 text-gray-500" />
+                <p className="mb-2 text-sm text-gray-500">
+                  Drag & drop a disk image here, or click to select
+                </p>
+                <Button variant="outline" size="sm" className="relative">
+                  Select File
+                  <input
+                    type="file"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    onChange={handleFileChange}
+                    accept=".dd,.img,.iso,.bin,.raw,.e01,.aff"
+                  />
+                </Button>
+              </div>
+            )}
+
           </div>
           <div className="space-y-2">
             <Label>Tool</Label>
@@ -182,6 +216,19 @@ export function ForensicsTool() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+          {tool === "tsk" && tskCommand === "icat" && (
+            <div className="space-y-2">
+              <Label htmlFor="inode">Inode Number</Label>
+              <input
+                id="inode"
+                type="text"
+                value={inode}
+                onChange={(e) => setInode(e.target.value)}
+                placeholder="Enter inode number"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
             </div>
           )}
           {tool === "foremost" && (
@@ -251,16 +298,6 @@ export function ForensicsTool() {
             )}
           </div>
         )}
-
-        <Button
-          onClick={handleForensics}
-          disabled={isLoading || !file}
-          className="flex items-center"
-        >
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          <Search className="mr-2 h-4 w-4" />
-          Run Forensic Analysis
-        </Button>
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">
             {error}

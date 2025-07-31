@@ -67,7 +67,7 @@ export async function runObjdump(args: string, file: Buffer | NodeJS.ReadableStr
   ];
 
   try {
-    const { stdout } = await asyncExecFile("docker", dockerArgs);
+    const { stdout } = await asyncExecFile("docker", dockerArgs,{ maxBuffer: 10 * 1024 * 1024 } );
     return stdout;
   } catch (error) {
     throw new Error(`Objdump failed: ${error instanceof Error ? error.message : String(error)}`);
