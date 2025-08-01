@@ -1,34 +1,70 @@
-import { exec } from 'child_process';
-import util from 'util';
+import { exec } from "child_process"
+import util from "util"
 
-const asyncExec = util.promisify(exec);
+const asyncExec = util.promisify(exec)
 
-type WordlistPreset = 'common-2500' | 'big-10k' | 'mega-50k' | string;
-type Extensions = string; // comma-separated extensions
+type WordlistPreset = "common" | "big" | "mega" | "kali-standard" | "kali-large" | string
+
+interface GobusterResult {
+  success: boolean
+  data?: {
+    stdout: string
+    stderr: string
+  }
+  error?: string
+}
 
 export async function runGoBuster(
   url: string,
   wordlist: WordlistPreset,
   threads: number,
-  extensions:Extensions= '',
-  followRedirects: boolean = false
-) {
-  const container = process.env.NEXT_PUBLIC_CONTAINER_NAME;
+  extensions = "",
+  followRedirects = false,
+): Promise<GobusterResult> {
+  const container = process.env.NEXT_PUBLIC_CONTAINER_NAME || "pwntools"
+
+  // Input validation
+  if (!url.match(/^https?:\/\/.+/i)) {
+    return {
+      success: false,
+      error: "Invalid URL format",
+    }
+  }
 
   const args = [
     url,
     wordlist,
-    threads.toString(),
-    extensions,
-    followRedirects.toString().toLowerCase()
-  ].map(arg => `'${arg.replace(/'/g, "'\\''")}'`);
+    Math.max(1, Math.min(threads, 100)).toString(),
+    extensions.replace(/[^a-zA-Z0-9,]/g, "") || "none",
+    String(followRedirects),
+  ]
+
+  console.log("DEBUG: Executing Gobuster with args:", args.join(" "));
 
   try {
-    const { stdout } = await asyncExec(
-      `docker exec ${container} /docker/scripts/run-gobuster.sh ${args.join(' ')}`
-    );
-    return stdout;
+    const { stdout, stderr } = await asyncExec(
+      `docker exec ${container} /docker/scripts/run-gobuster.sh ${args.join(" ")}`,
+      {
+        maxBuffer: 1024 * 1024 * 10,
+      },
+    )
+
+    console.log("DEBUG: Gobuster stdout:", stdout)
+    console.log("DEBUG: Gobuster stderr:", stderr)
+
+    return {
+      success: true,
+      data: {
+        stdout,
+        stderr,
+      },
+    }
   } catch (error) {
-    throw new Error(`GoBuster execution failed: ${error instanceof Error ? error.message : String(error)}`);
+    console.error("DEBUG: Gobuster error:", error)
+    const err = error instanceof Error ? error.message : String(error)
+    return {
+      success: false,
+      error: err,
+    }
   }
 }

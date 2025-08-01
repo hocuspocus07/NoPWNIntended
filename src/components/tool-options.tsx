@@ -41,7 +41,7 @@ function ToolOptions({ activeTool, onRegisterScan, onToolChange }: ToolOptionsPr
             {activeTool === "whois-lookup" && <WhoisPanel onRegisterScan={onRegisterScan} />}
             {/* {activeTool === "web-scanner" && <WebScanner onRegisterScan={onRegisterScan}/>} */}
             {activeTool === "ssl-analyzer" && <SslScanner onRegisterScan={onRegisterScan} />}
-            {activeTool === "directory-brute-forcer" && <DirectoryBruteForcer />}
+            {activeTool === "directory-brute-forcer" && <DirectoryBruteForcer onRegisterScan={onRegisterScan}/>}
             {activeTool === "sqli-scanner" && <SqlInjectionScanner />}
             {activeTool === "xss-tester" && <XssTester />}
             {activeTool === "encoder/decoder" && <EncoderDecoder onOutputChange={handleEncoderDecoderOutput} />}

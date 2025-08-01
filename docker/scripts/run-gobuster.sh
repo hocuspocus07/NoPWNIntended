@@ -1,46 +1,52 @@
 #!/bin/bash
-set -euo pipefail  # Enable strict error handling
+set -euo pipefail
+
+exec 2>&1  
 
 URL=$1
-WORDLIST=$2        # common | big | mega | kali-small | kali-medium | kali-large | /custom/path
+WORDLIST=$2
 THREADS=$3
-EXTENSIONS=$4      # comma-separated
+EXTENSIONS=$4
 FOLLOW_REDIRECTS=$5
+
+# Check if gobuster is installed
+if ! command -v gobuster &> /dev/null; then
+    echo "ERROR: Gobuster is not installed or not in PATH"
+    echo "Install with: apt update && apt install -y gobuster"
+    exit 1
+fi
 
 SECLISTS_DIR="/usr/share/seclists"
 KALI_WORDLISTS_DIR="/usr/share/wordlists"
 
-# Wordlist resolution
 case "${WORDLIST,,}" in
   common|small)
-    WORDLIST="$SECLISTS_DIR/Discovery/Web-Content/common.txt"
+    WORDLIST_PATH="$SECLISTS_DIR/Discovery/Web-Content/common.txt"
     ;;
   big|medium)
-    WORDLIST="$SECLISTS_DIR/Discovery/Web-Content/directory-list-2.3-medium.txt"
+    WORDLIST_PATH="$SECLISTS_DIR/Discovery/Web-Content/directory-list-2.3-medium.txt"
     ;;
   mega|large)
-    WORDLIST="$SECLISTS_DIR/Discovery/Web-Content/directory-list-2.3-big.txt"
+    WORDLIST_PATH="$SECLISTS_DIR/Discovery/Web-Content/directory-list-2.3-big.txt"
     ;;
   kali-standard)
-    WORDLIST="$KALI_WORDLISTS_DIR/dirb/common.txt"
+    WORDLIST_PATH="$KALI_WORDLISTS_DIR/dirb/common.txt"
     ;;
   kali-large)
-    WORDLIST="$KALI_WORDLISTS_DIR/dirb/big.txt"
+    WORDLIST_PATH="$KALI_WORDLISTS_DIR/dirb/big.txt"
     ;;
   *)
-    if [[ ! -f "$WORDLIST" ]]; then
-      echo "Error: Wordlist file not found: $WORDLIST" >&2
-      echo "Available predefined options:" >&2
-      echo "  common, big, mega, kali-small, kali-medium, kali-large" >&2
-      exit 1
-    fi
+    WORDLIST_PATH="$WORDLIST"
     ;;
 esac
 
-# Verify wordlist exists
-if [[ ! -f "$WORDLIST" ]]; then
-  echo "Error: Selected wordlist not found. Install seclists package with:" >&2
-  echo "  apt update && apt install -y seclists" >&2
+if [[ ! -f "$WORDLIST_PATH" ]]; then
+  echo "ERROR: Wordlist file not found: $WORDLIST_PATH"
+  echo "Available directories:"
+  ls -la /usr/share/ 2>/dev/null | grep -E "(seclists|wordlists)" || echo "No wordlist directories found"
+  
+  echo "Searching for available wordlists..."
+  find /usr/share -name "*.txt" -path "*/wordlist*" -o -path "*/seclists*" 2>/dev/null | head -10 || echo "No wordlists found"
   exit 1
 fi
 
@@ -48,8 +54,10 @@ CMD=(
   gobuster
   dir
   -u "$URL"
-  -w "$WORDLIST"
+  -w "$WORDLIST_PATH"
   -t "$THREADS"
+  --no-progress  # Disable progress bar for cleaner output
+  --no-color     # Disable colors for cleaner parsing
 )
 
 if [[ -n "$EXTENSIONS" ]]; then
@@ -60,6 +68,11 @@ if [[ "${FOLLOW_REDIRECTS,,}" == "true" ]]; then
   CMD+=(-r)
 fi
 
-# Print and execute
-echo "Running:" "${CMD[@]}" >&2
-"${CMD[@]}"
+timeout 300 "${CMD[@]}" 2>&1 || {
+    exit_code=$?
+    echo "ERROR: Gobuster execution failed with exit code: $exit_code"
+    if [ $exit_code -eq 124 ]; then
+        echo "ERROR: Scan timed out after 5 minutes"
+    fi
+    exit $exit_code
+}

@@ -1,5 +1,5 @@
 "use client"
-
+import { FilePreview } from "../filePreview"
 import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -135,34 +135,36 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>File</Label>
-            <div
-              className={`flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-gray-300"
-                }`}
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-            >
-              <File className="mb-2 h-8 w-8 text-gray-500" />
-              <p className="mb-2 text-sm text-gray-500">
-                {file
-                  ? `Selected file: ${file.name}`
-                  : "Drag & drop a file here, or click to select"}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="relative"
-              >
-                Select File
-                <input
-                  type="file"
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  onChange={handleFileChange}
-                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
-                />
-              </Button>
-            </div>
+                         {file ? (
+               <FilePreview file={file} onRemove={() => setFile(null)} />
+             ) : (
+               <div
+                 className={`flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-gray-300"
+                   }`}
+                 onDragEnter={handleDragEnter}
+                 onDragLeave={handleDragLeave}
+                 onDragOver={handleDragOver}
+                 onDrop={handleDrop}
+               >
+                 <File className="mb-2 h-8 w-8 text-gray-500" />
+                 <p className="mb-2 text-sm text-gray-500">
+                   Drag & drop a file here, or click to select
+                 </p>
+                 <Button
+                   variant="outline"
+                   size="sm"
+                   className="relative"
+                 >
+                   Select File
+                   <input
+                     type="file"
+                     className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                     onChange={handleFileChange}
+                     accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                   />
+                 </Button>
+               </div>
+             )}
           </div>
 
           <div className="space-y-4">
