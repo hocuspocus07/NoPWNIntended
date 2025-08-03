@@ -23,6 +23,7 @@ RUN mkdir -p /var/log && touch /var/log/nmap_scan.log && chmod 666 /var/log/nmap
 RUN apt-get update && \
     apt-get install -y \
     seclists wordlists \
+    tshark wireshark-common jq\
     nmap subfinder amass assetfinder dnsgen whois \
     nikto wpscan skipfish ffuf gobuster dirb dirsearch \
     sqlmap hashcat john testssl.sh \
