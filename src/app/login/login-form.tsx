@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useState } from "react"
-import { supabase } from '@/utils/supabase/client';
+import { createClient } from "@/utils/supabase/client"
 import {toast} from 'sonner'
 import { FaGithub } from "react-icons/fa"
 import { MailIcon } from "lucide-react"
@@ -26,6 +26,7 @@ export function LoginForm({
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [magicOpen, setMagicOpen] = useState(false)
+  const supabase=createClient()
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)

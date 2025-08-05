@@ -2,18 +2,27 @@
 
 import * as React from "react"
 import {
-  ColumnDef,
-  ColumnFiltersState,
+  type ColumnDef,
+  type ColumnFiltersState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  SortingState,
+  type SortingState,
   useReactTable,
-  VisibilityState,
+  type VisibilityState,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Terminal, Clock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
+import {
+  ArrowUpDown,
+  ChevronDown,
+  MoreHorizontal,
+  Terminal,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -27,83 +36,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-
-const data: ToolUsage[] = [
-  {
-    id: "scan-001",
-    tool: "Nmap",
-    command: "nmap -sV -T4 192.168.1.1",
-    timestamp: "2023-11-15T09:23:45Z",
-    duration: "45s",
-    status: "completed",
-    output: "3 open ports detected",
-  },
-  {
-    id: "scan-002",
-    tool: "Metasploit",
-    command: "use exploit/multi/handler",
-    timestamp: "2023-11-15T10:15:22Z",
-    duration: "2m 15s",
-    status: "failed",
-    output: "Payload generation failed",
-  },
-  {
-    id: "scan-003",
-    tool: "SQLmap",
-    command: "sqlmap -u http://test.com?id=1 --dbs",
-    timestamp: "2023-11-15T11:42:33Z",
-    duration: "5m 48s",
-    status: "running",
-    output: "Scanning for SQL injection",
-  },
-  {
-    id: "scan-004",
-    tool: "Burp Suite",
-    command: "Spider scan on https://example.com",
-    timestamp: "2023-11-15T13:05:17Z",
-    duration: "12m",
-    status: "completed",
-    output: "42 endpoints discovered",
-  },
-  {
-    id: "scan-005",
-    tool: "John the Ripper",
-    command: "john --wordlist=rockyou.txt hashes.txt",
-    timestamp: "2023-11-15T14:30:09Z",
-    duration: "1h 23m",
-    status: "completed",
-    output: "3 passwords cracked",
-  },
-]
-
-export type ToolUsage = {
-  id: string
-  tool: string
-  command: string
-  timestamp: string
-  duration: string
-  status: "pending" | "running" | "completed" | "failed"
-  output: string
-}
+import type { ToolUsage } from "@/utils/storage-helpers/execution-helpers" 
 
 export const columns: ColumnDef<ToolUsage>[] = [
   {
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
+        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
@@ -119,32 +61,25 @@ export const columns: ColumnDef<ToolUsage>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "tool",
+    accessorKey: "tool_name",
     header: "Tool",
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <Terminal className="h-4 w-4" />
-        <span className="font-medium">{row.getValue("tool")}</span>
+        <span className="font-medium">{row.getValue("tool_name")}</span>
       </div>
     ),
   },
   {
-    accessorKey: "command",
+    accessorKey: "command_ran",
     header: "Command",
-    cell: ({ row }) => (
-      <div className="font-mono text-sm bg-accent/50 p-2 rounded">
-        {row.getValue("command")}
-      </div>
-    ),
+    cell: ({ row }) => <div className="font-mono text-sm bg-accent/50 p-2 rounded">{row.getValue("command_ran")}</div>,
   },
   {
-    accessorKey: "timestamp",
+    accessorKey: "started_at",
     header: ({ column }) => {
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
           <Clock className="mr-2 h-4 w-4" />
           Timestamp
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -152,7 +87,7 @@ export const columns: ColumnDef<ToolUsage>[] = [
       )
     },
     cell: ({ row }) => {
-      const date = new Date(row.getValue("timestamp"))
+      const date = new Date(row.getValue("started_at"))
       return (
         <div className="text-sm">
           {date.toLocaleDateString()} {date.toLocaleTimeString()}
@@ -163,9 +98,7 @@ export const columns: ColumnDef<ToolUsage>[] = [
   {
     accessorKey: "duration",
     header: "Duration",
-    cell: ({ row }) => (
-      <div className="text-sm">{row.getValue("duration")}</div>
-    ),
+    cell: ({ row }) => <div className="text-sm">{row.getValue("duration")}</div>,
   },
   {
     accessorKey: "status",
@@ -176,14 +109,14 @@ export const columns: ColumnDef<ToolUsage>[] = [
         completed: "success",
         running: "secondary",
         failed: "destructive",
-        pending: "outline",
-      }[status] as  "secondary" | "destructive" | "outline"
-      
+        stopped: "outline",
+      }[status] as "secondary" | "destructive" | "outline" | "success"
+
       const icon = {
         completed: <CheckCircle2 className="h-4 w-4 mr-2" />,
         running: <Loader2 className="h-4 w-4 mr-2 animate-spin" />,
         failed: <AlertCircle className="h-4 w-4 mr-2" />,
-        pending: <Clock className="h-4 w-4 mr-2" />,
+        stopped: <Clock className="h-4 w-4 mr-2" />,
       }[status]
 
       return (
@@ -210,14 +143,8 @@ export const columns: ColumnDef<ToolUsage>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(usage.id)}
-            >
-              Copy scan ID
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(usage.command)}
-            >
+            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(usage.id)}>Copy scan ID</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(usage.command_ran)}>
               Copy command
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -235,9 +162,37 @@ export default function HistoryTab() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+  const [historyData, setHistoryData] = React.useState<ToolUsage[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    const fetchHistory = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const response = await fetch("/api/execution/get-history")
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+          throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+        }
+
+        const result = await response.json()
+        setHistoryData(result.data || [])
+      } catch (err: any) {
+        console.error("Failed to fetch execution history:", err)
+        setError(err.message || "Failed to load scan history.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchHistory()
+  }, [])
 
   const table = useReactTable({
-    data,
+    data: historyData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -260,15 +215,13 @@ export default function HistoryTab() {
       <div className="flex items-center py-4">
         <Input
           placeholder="Filter tools..."
-          value={(table.getColumn("tool")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("tool")?.setFilterValue(event.target.value)
-          }
+          value={(table.getColumn("tool_name")?.getFilterValue() as string) ?? ""}
+          onChange={(event) => table.getColumn("tool_name")?.setFilterValue(event.target.value)}
           className="max-w-sm"
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className="ml-auto bg-transparent">
               Columns <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -282,9 +235,7 @@ export default function HistoryTab() {
                     key={column.id}
                     className="capitalize"
                     checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
                   >
                     {column.id}
                   </DropdownMenuCheckboxItem>
@@ -301,12 +252,7 @@ export default function HistoryTab() {
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   )
                 })}
@@ -314,28 +260,32 @@ export default function HistoryTab() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Loading scan history...
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center text-red-500">
+                  Error: {error}
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   No scan history found.
                 </TableCell>
               </TableRow>
@@ -345,8 +295,8 @@ export default function HistoryTab() {
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} scan(s) selected.
+          {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} scan(s)
+          selected.
         </div>
         <div className="space-x-2">
           <Button
@@ -357,12 +307,7 @@ export default function HistoryTab() {
           >
             Previous
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
+          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
             Next
           </Button>
         </div>

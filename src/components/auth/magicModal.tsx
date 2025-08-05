@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { supabase } from "@/utils/supabase/client"
+import { createClient } from "@/utils/supabase/client"
 
 export default function MagicLinkModal({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
   const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
+const supabase=createClient()
   const handleMagicLink = async () => {
     setIsSubmitting(true)
     setError(null)

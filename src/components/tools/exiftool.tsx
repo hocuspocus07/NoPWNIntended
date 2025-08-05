@@ -1,28 +1,23 @@
 "use client"
 import { FilePreview } from "../filePreview"
-import { useState, useCallback } from "react"
+import type React from "react"
+
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { File, Search, Loader2, ChevronDown, ChevronRight, Image, Code } from "lucide-react"
-import { toast } from "sonner"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { useEffect } from "react"
+import { File, Loader2, ChevronDown, ChevronRight, ImageIcon } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToolTracking } from "@/hooks/use-tool-tracking"
 
 export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
+  const { startExecution, completeExecution } = useToolTracking()
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [options, setOptions] = useState({
     outputFormat: "human",
     groupNames: false,
     binary: false,
-    json: false,
     all: false,
     common: true,
     specificTags: "",
@@ -61,10 +56,8 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(false)
-
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFile = e.dataTransfer.files[0]
-      setFile(droppedFile)
+      setFile(e.dataTransfer.files[0])
     }
   }, [])
 
@@ -74,60 +67,80 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
     }
   }, [])
 
-
   useEffect(() => {
     onRegisterScan(async () => {
-      if (!file) {
-        throw new Error("Please select a file");
-      }
-      let token = localStorage.getItem("access_token");
-      if (!token) {
-        const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
-        if (supa) {
-          try {
-            token = JSON.parse(supa).access_token;
-          } catch (e) {
-            token = null;
+      if (!file) throw new Error("Please select a file")
+      setIsLoading(true)
+      setError(null)
+
+      const startTime = Date.now()
+      let executionId: string | undefined
+
+      try {
+        executionId = await startExecution({
+          tool: "ExifTool",
+          command: "exiftool",
+          parameters: options,
+          target: file?.name || "unknown",
+          results_summary: "",
+        })
+
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("outputFormat", options.outputFormat)
+        formData.append("groupNames", String(options.groupNames))
+        formData.append("binaryOutput", String(options.binary))
+        formData.append("showAllTags", String(options.all))
+        formData.append("showCommonTags", String(options.common))
+        formData.append("specificTags", options.specificTags)
+        formData.append("geotagsOnly", String(options.geotag))
+        formData.append("removeMetadata", String(options.removeMetadata))
+        
+        const response = await fetch("/api/osint/exiftool", {
+          method: "POST",
+          body: formData,
+        })
+
+        const duration = Date.now() - startTime
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+          const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+
+          if (executionId) {
+            await completeExecution(executionId, "", duration, "failed", apiError)
           }
+          setIsLoading(false)
+          throw new Error(apiError)
         }
-      }
-      console.log("Token used for fetch:", token);
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("outputFormat", options.outputFormat);
-      formData.append("groupNames", String(options.groupNames));
-      formData.append("binaryOutput", String(options.binary));
-      formData.append("showAllTags", String(options.all));
-      formData.append("showCommonTags", String(options.common));
-      formData.append("specificTags", options.specificTags);
-      formData.append("geotagsOnly", String(options.geotag));
-      formData.append("removeMetadata", String(options.removeMetadata));
+        const result = await response.json()
+        const output = typeof result.output === "string" ? result.output : JSON.stringify(result.output, null, 2)
 
-      const response = await fetch("/api/osint/exiftool", {
-        method: "POST",
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
+        // Complete (success)
+        if (executionId) {
+          await completeExecution(executionId, output, duration, "completed", "")
         }
-      });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to analyze file");
+        setIsLoading(false)
+        return output
+      } catch (err) {
+        const errorMessage = (err as { message?: string })?.message || "Unknown error"
+        if (executionId) {
+          await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+        }
+        setIsLoading(false)
+        setError(errorMessage)
+        throw err
       }
-
-      const result = await response.json();
-      return typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2);
-    });
-  }, [file, options, onRegisterScan]);
+    })
+  }, [file, options, onRegisterScan, startExecution, completeExecution])
 
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Image className="h-5 w-5" />
+          <ImageIcon className="h-5 w-5" />
           Metadata Analysis (ExifTool)
         </CardTitle>
       </CardHeader>
@@ -135,36 +148,31 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>File</Label>
-                         {file ? (
-               <FilePreview file={file} onRemove={() => setFile(null)} />
-             ) : (
-               <div
-                 className={`flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors ${isDragging ? "border-primary bg-primary/10" : "border-gray-300"
-                   }`}
-                 onDragEnter={handleDragEnter}
-                 onDragLeave={handleDragLeave}
-                 onDragOver={handleDragOver}
-                 onDrop={handleDrop}
-               >
-                 <File className="mb-2 h-8 w-8 text-gray-500" />
-                 <p className="mb-2 text-sm text-gray-500">
-                   Drag & drop a file here, or click to select
-                 </p>
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   className="relative"
-                 >
-                   Select File
-                   <input
-                     type="file"
-                     className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                     onChange={handleFileChange}
-                     accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
-                   />
-                 </Button>
-               </div>
-             )}
+            {file ? (
+              <FilePreview file={file} onRemove={() => setFile(null)} />
+            ) : (
+              <div
+                className={`flex flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors ${
+                  isDragging ? "border-primary bg-primary/10" : "border-gray-300"
+                }`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
+                <File className="mb-2 h-8 w-8 text-gray-500" />
+                <p className="mb-2 text-sm text-gray-500">Drag & drop a file here, or click to select</p>
+                <Button variant="outline" size="sm" className="relative bg-transparent">
+                  Select File
+                  <input
+                    type="file"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    onChange={handleFileChange}
+                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                  />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -178,8 +186,10 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
                   <SelectValue placeholder="Select format" />
                 </SelectTrigger>
                 <SelectContent>
-                  {outputFormats.map(f => (
-                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                  {outputFormats.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -221,7 +231,6 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
                   />
                   <Label htmlFor="group-names">Show group names</Label>
                 </div>
-
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -232,7 +241,6 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
                   />
                   <Label htmlFor="binary">Binary output</Label>
                 </div>
-
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -244,7 +252,6 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
                   <Label htmlFor="all">Show all tags</Label>
                 </div>
               </div>
-
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <input
@@ -256,7 +263,6 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
                   />
                   <Label htmlFor="common">Show common tags</Label>
                 </div>
-
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -267,7 +273,6 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
                   />
                   <Label htmlFor="geotag">Extract geotags only</Label>
                 </div>
-
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -282,6 +287,13 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
             </div>
           )}
         </div>
+
+        {isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="animate-spin h-4 w-4" />
+            Running ExifTool...
+          </div>
+        )}
 
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">

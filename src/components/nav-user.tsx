@@ -33,7 +33,7 @@ import { AccountTabs } from "./account-tabs"
 import { AnimatePresence, motion } from "framer-motion"
 import { toast } from "sonner"
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from "@/utils/supabase/client"
+import { createClient } from "@/utils/supabase/client"
 import { type User } from '@supabase/supabase-js'
 import Avatar from "@/app/dashboard/avatar"
 interface UserData {
@@ -54,7 +54,7 @@ export function NavUser() {
   const [showTabs, setShowTabs] = useState(false)
 
   const [user, setUser] = useState<User | null>(null)
-
+const supabase=createClient()
   useEffect(() => {
     const getUser = async () => {
       try {

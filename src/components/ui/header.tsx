@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useEffect, useState } from 'react'
-import { supabase } from '@/utils/supabase/client'
+import { createClient } from "@/utils/supabase/client"
 import { type User } from '@supabase/supabase-js'
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar"
 import Image from "next/image"
@@ -20,7 +20,7 @@ import { useRef } from "react"
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-
+const supabase=createClient()
   useEffect(() => {
     const getUser = async () => {
       try {
