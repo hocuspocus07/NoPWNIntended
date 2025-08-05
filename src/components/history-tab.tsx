@@ -7,10 +7,9 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
-  type SortingState,
   useReactTable,
+  type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table"
 import {
@@ -23,7 +22,6 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -38,7 +36,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import type { ToolUsage } from "@/utils/storage-helpers/execution-helpers" 
+import type { ToolUsage } from "@/utils/storage-helpers/execution-helpers"
+import { ExecutionOutputViewer } from "./execution-output"
+import { toast } from "sonner" // For copy notifications
+
+// Define a type for the meta property in ColumnDef
+interface ColumnMeta {
+  onViewOutput: (usage: ToolUsage) => void
+}
 
 export const columns: ColumnDef<ToolUsage>[] = [
   {
@@ -130,8 +135,22 @@ export const columns: ColumnDef<ToolUsage>[] = [
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
+    // Corrected: 'column' is a direct argument to the cell function
+    cell: ({ row, column }) => {
       const usage = row.original
+
+      const handleCopyCommand = () => {
+        navigator.clipboard.writeText(usage.command_ran)
+        toast.success("Command copied to clipboard!")
+      }
+
+      const handleViewOutput = () => {
+        // Access meta from the 'column' argument
+        const meta = column.columnDef.meta as ColumnMeta | undefined
+        if (meta?.onViewOutput) {
+          meta.onViewOutput(usage)
+        }
+      }
 
       return (
         <DropdownMenu>
@@ -143,13 +162,9 @@ export const columns: ColumnDef<ToolUsage>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(usage.id)}>Copy scan ID</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(usage.command_ran)}>
-              Copy command
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleCopyCommand}>Copy command</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View full output</DropdownMenuItem>
-            <DropdownMenuItem>Rerun this scan</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleViewOutput}>View full output</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )
@@ -166,49 +181,91 @@ export default function HistoryTab() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
-    const fetchHistory = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const response = await fetch("/api/execution/get-history")
+  // Pagination state
+  const [pageIndex, setPageIndex] = React.useState(0)
+  const pageSize = 5 // 5 tools per page
+  const [totalCount, setTotalCount] = React.useState(0) // To store total count for pagination
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-          throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
-        }
+  // State for viewing full output
+  const [showOutputViewer, setShowOutputViewer] = React.useState(false)
+  const [selectedExecution, setSelectedExecution] = React.useState<ToolUsage | null>(null)
 
-        const result = await response.json()
-        setHistoryData(result.data || [])
-      } catch (err: any) {
-        console.error("Failed to fetch execution history:", err)
-        setError(err.message || "Failed to load scan history.")
-      } finally {
-        setIsLoading(false)
+  const fetchHistory = React.useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/execution/get-history?limit=${pageSize}&offset=${pageIndex * pageSize}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
       }
-    }
 
+      const result = await response.json()
+      setHistoryData(result.data || [])
+      setTotalCount(result.totalCount || 0)
+    } catch (err: any) {
+      console.error("Failed to fetch execution history:", err)
+      setError(err.message || "Failed to load scan history.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [pageIndex, pageSize])
+
+  React.useEffect(() => {
     fetchHistory()
+  }, [fetchHistory])
+
+  const handleViewOutput = React.useCallback((execution: ToolUsage) => {
+    setSelectedExecution(execution)
+    setShowOutputViewer(true)
+  }, [])
+
+  const handleBackToHistory = React.useCallback(() => {
+    setShowOutputViewer(false)
+    setSelectedExecution(null)
   }, [])
 
   const table = useReactTable({
     data: historyData,
-    columns,
+    columns: columns.map((col) => ({
+      ...col,
+      meta: {
+        ...col.meta,
+        onViewOutput: handleViewOutput, // Pass the handler to column meta
+      } as ColumnMeta, // Assert the type of meta
+    })),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    manualPagination: true,
+    pageCount: totalCount > 0 ? Math.ceil(totalCount / pageSize) : 1,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      pagination: {
+        pageIndex,
+        pageSize,
+      },
     },
   })
+
+  if (showOutputViewer && selectedExecution) {
+    return (
+      <ExecutionOutputViewer
+        output={selectedExecution.output}
+        command={selectedExecution.command_ran}
+        toolName={selectedExecution.tool_name}
+        onBack={handleBackToHistory}
+      />
+    )
+  }
 
   return (
     <div className="w-full">
@@ -302,12 +359,17 @@ export default function HistoryTab() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.previousPage()}
+            onClick={() => setPageIndex((old) => Math.max(0, old - 1))}
             disabled={!table.getCanPreviousPage()}
           >
             Previous
           </Button>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPageIndex((old) => old + 1)}
+            disabled={!table.getCanNextPage()}
+          >
             Next
           </Button>
         </div>

@@ -77,9 +77,43 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
       let executionId: string | undefined
 
       try {
+        let commandString = `exiftool -q -fast`
+
+        if (options.outputFormat === "json") {
+          commandString += ` -json`
+        } else if (options.outputFormat === "csv") {
+          commandString += ` -csv`
+        } else if (options.outputFormat === "xml") {
+          commandString += ` -xml`
+        }
+
+        if (options.groupNames) {
+          commandString += ` -g`
+        }
+        if (options.binary) {
+          commandString += ` -b`
+        }
+        if (options.all) {
+          commandString += ` -a`
+        }
+        if (options.specificTags) {
+          const tags = options.specificTags
+            .split(",")
+            .map((tag) => `-${tag.trim()}`)
+            .join(" ")
+          commandString += ` ${tags}`
+        }
+        if (options.geotag) {
+          commandString += ` -geotags`
+        }
+        if (options.removeMetadata) {
+          commandString += ` -all=` 
+        }
+        commandString += ` "${file?.name || "input_file"}"`
+
         executionId = await startExecution({
           tool: "ExifTool",
-          command: "exiftool",
+          command: commandString, 
           parameters: options,
           target: file?.name || "unknown",
           results_summary: "",
@@ -95,7 +129,7 @@ export function ExifTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promis
         formData.append("specificTags", options.specificTags)
         formData.append("geotagsOnly", String(options.geotag))
         formData.append("removeMetadata", String(options.removeMetadata))
-        
+
         const response = await fetch("/api/osint/exiftool", {
           method: "POST",
           body: formData,
