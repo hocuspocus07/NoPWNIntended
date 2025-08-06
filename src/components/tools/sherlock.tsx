@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { User, Search, Loader2, ChevronDown, ChevronRight, Network } from "lucide-react"
+import { User, Search, Loader2, ChevronDown, ChevronRight, Network } from 'lucide-react'
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -15,9 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useEffect } from "react"
+import { useToolTracking } from "@/hooks/use-tool-tracking"
 
 export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
+  const { startExecution, completeExecution } = useToolTracking()
   const [username, setUsername] = useState("")
   const [options, setOptions] = useState({
     timeout: 60,
@@ -39,28 +40,37 @@ export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Pr
       if (!username) {
         throw new Error("Please enter a username")
       }
-      let token = localStorage.getItem("access_token");
-      if (!token) {
-        const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
-        if (supa) {
-          try {
-            token = JSON.parse(supa).access_token;
-          } catch (e) {
-            token = null;
-          }
-        }
-      }
-      console.log("Token used for fetch:", token);
 
       setIsLoading(true)
       setError(null)
 
+      const startTime = Date.now()
+      let executionId: string | undefined
+
       try {
+        let commandString = `sherlock ${username}`
+        if (options.timeout !== 60) commandString += ` --timeout ${options.timeout}`
+        if (!options.printFound) commandString += ` --no-found`
+        if (options.printNotFound) commandString += ` --print-not-found`
+        if (options.csv) commandString += ` --csv`
+        if (options.json) commandString += ` --json`
+        if (options.site) commandString += ` --site ${options.site}`
+        if (options.proxy) commandString += ` --proxy ${options.proxy}`
+        if (options.tor) commandString += ` --tor`
+        if (options.uniqueTor) commandString += ` --unique-tor`
+
+        executionId = await startExecution({
+          tool: "Sherlock",
+          command: commandString,
+          parameters: options,
+          target: username,
+          results_summary: "",
+        })
+
         const response = await fetch("/api/osint/sherlock", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({
             username,
@@ -68,21 +78,40 @@ export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Pr
           })
         })
 
+        const duration = Date.now() - startTime
+
         if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || "Search failed")
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+          const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+
+          if (executionId) {
+            await completeExecution(executionId, "", duration, "failed", apiError)
+          }
+          setIsLoading(false)
+          throw new Error(apiError)
         }
 
         const result = await response.json()
-        return typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2)
-      } catch (err) {
-        console.error("Search error:", err)
-        throw err
-      } finally {
+        const output = typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2)
+
+        // Complete (success)
+        if (executionId) {
+          await completeExecution(executionId, output, duration, "completed", "")
+        }
+
         setIsLoading(false)
+        return output
+      } catch (err) {
+        const errorMessage = (err as { message?: string })?.message || "Unknown error"
+        if (executionId) {
+          await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+        }
+        setIsLoading(false)
+        setError(errorMessage)
+        throw err
       }
     })
-  }, [username, options, onRegisterScan])
+  }, [username, options, onRegisterScan, startExecution, completeExecution])
 
   return (
     <Card className="w-full">
@@ -213,6 +242,13 @@ export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Pr
             </div>
           )}
         </div>
+
+        {isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="animate-spin h-4 w-4" />
+            Running Sherlock...
+          </div>
+        )}
 
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">
