@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Key, ChevronDown, ChevronRight, Hash } from "lucide-react"
+import { Loader2, Key, ChevronDown, ChevronRight, Hash } from 'lucide-react'
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -15,8 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useToolTracking } from "@/hooks/use-tool-tracking"
 
 export function HashCracker({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
+  const { startExecution, completeExecution } = useToolTracking()
   const [hash, setHash] = useState("")
   const [options, setOptions] = useState({
     hashType: "auto",
@@ -37,27 +39,45 @@ export function HashCracker({ onRegisterScan }: { onRegisterScan: (fn: () => Pro
         throw new Error("Please enter a hash to crack")
       }
 
-      let token = localStorage.getItem("access_token");
-      if (!token) {
-        const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
-        if (supa) {
-          try {
-            token = JSON.parse(supa).access_token;
-          } catch (e) {
-            token = null;
-          }
-        }
-      }
-
       setIsLoading(true)
       setError(null)
 
+      const startTime = Date.now()
+      let executionId: string | undefined
+      let commandString = `hashcat -m ${options.hashType === "auto" ? "auto" : options.hashType} -a ${options.attackMode} ${hash}`
+      let parameters: Record<string, any> = { ...options, hash }
+
+      if (options.attackMode !== "brute") {
+        const selectedWordlist = options.wordlist === "custom" ? options.customWordlist : options.wordlist;
+        commandString += ` ${selectedWordlist}`;
+        parameters.wordlist = selectedWordlist;
+      }
+      if (options.rules) {
+        commandString += ` -r ${options.rules}`;
+        parameters.rules = options.rules;
+      }
+      if (options.workload !== "3") {
+        commandString += ` -w ${options.workload}`;
+        parameters.workload = options.workload;
+      }
+      if (options.potfile) {
+        commandString += ` --potfile-disable`; 
+        parameters.potfile = options.potfile;
+      }
+
       try {
+        executionId = await startExecution({
+          tool: "HashCracker",
+          command: commandString,
+          parameters: parameters,
+          target: hash,
+          results_summary: "",
+        })
+
         const response = await fetch("/api/payload-crafting/hash-cracker", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({
             hash,
@@ -70,21 +90,40 @@ export function HashCracker({ onRegisterScan }: { onRegisterScan: (fn: () => Pro
           })
         })
 
+        const duration = Date.now() - startTime
+
         if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || "Hash cracking failed")
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+          const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+
+          if (executionId) {
+            await completeExecution(executionId, "", duration, "failed", apiError)
+          }
+          setIsLoading(false)
+          throw new Error(apiError)
         }
 
         const result = await response.json()
-        return typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2)
-      } catch (err) {
-        console.error("Hash cracking error:", err)
-        throw err
-      } finally {
+        const output = typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2)
+
+        // Complete (success)
+        if (executionId) {
+          await completeExecution(executionId, output, duration, "completed", "")
+        }
+
         setIsLoading(false)
+        return output
+      } catch (err) {
+        const errorMessage = (err as { message?: string })?.message || "Unknown error"
+        if (executionId) {
+          await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+        }
+        setIsLoading(false)
+        setError(errorMessage)
+        throw err
       }
     })
-  }, [hash, options, onRegisterScan])
+  }, [hash, options, onRegisterScan, startExecution, completeExecution])
 
   const attackModes = [
     { value: "straight", label: "Straight (Dictionary)" },
@@ -285,6 +324,13 @@ export function HashCracker({ onRegisterScan }: { onRegisterScan: (fn: () => Pro
             </div>
           )}
         </div>
+
+        {isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="animate-spin h-4 w-4" />
+            Cracking hash...
+          </div>
+        )}
 
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">

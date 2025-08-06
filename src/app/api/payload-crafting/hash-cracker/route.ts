@@ -1,8 +1,19 @@
 import { runHashcat } from "@/lib/runners/runHashcat";
 import { NextResponse } from "next/server";
-
+import { createClient } from "@/utils/supabase/server";
 export async function POST(request:Request) {
     try {
+      const supabase = await createClient() 
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser()
+      
+          if (userError || !user) {
+            console.error("HASHCRACKER API: Authentication required or user not found", userError?.message)
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+          }
+      
         const body=await request.json();
         const scanResults=await runHashcat(body.hash,body.hashType,body.wordlist,body.attackMode,body.rulesFile,body.workload,body.usepotfile);
         const unique = Array.from(new Set(scanResults.trim().split('\n'))).join('\n');
