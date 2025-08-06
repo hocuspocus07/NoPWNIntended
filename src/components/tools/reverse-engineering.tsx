@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronDown, ChevronRight, Cpu, Search, Loader2, Upload } from "lucide-react"
+import { ChevronDown, ChevronRight, Cpu, Search, Loader2, Upload } from 'lucide-react'
 import { toast } from "sonner"
 import {
   Select,
@@ -13,8 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useToolTracking } from "@/hooks/use-tool-tracking"
 
 export function ReverseEngineeringTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
+  const { startExecution, completeExecution } = useToolTracking()
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [tool, setTool] = useState("radare2")
@@ -84,38 +86,38 @@ export function ReverseEngineeringTool({ onRegisterScan }: { onRegisterScan: (fn
         throw new Error("Please select a file")
       }
 
+      setIsLoading(true)
+      setError(null)
+
+      const startTime = Date.now()
+      let executionId: string | undefined
+      let commandString = `${tool} ${file.name}`
+
       try {
         const formData = new FormData()
         formData.append("file", file)
 
         let endpoint = ""
-        let response: Response
-
-        // Get auth token
-        let token = localStorage.getItem("access_token");
-        if (!token) {
-          const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
-          if (supa) {
-            try {
-              token = JSON.parse(supa).access_token;
-            } catch (e) {
-              token = null;
-            }
-          }
-        }
+        let parameters: Record<string, any> = {}
 
         switch (tool) {
           case "radare2":
             endpoint = "/api/misc/reverse/radare2"
             formData.append("mode", r2Command)
+            commandString += ` -cmd ${r2Command}`
+            parameters = { mode: r2Command }
             break
           case "gdb":
             endpoint = "/api/misc/reverse/gdb"
             formData.append("cmd", gdbCommand)
+            commandString += ` -cmd ${gdbCommand}`
+            parameters = { cmd: gdbCommand }
             break
           case "objdump":
             endpoint = "/api/misc/reverse/objdump"
             formData.append("args", objdumpArgs)
+            commandString += ` ${objdumpArgs}`
+            parameters = { args: objdumpArgs }
             break
           case "strings":
             endpoint = "/api/misc/reverse/strings"
@@ -123,30 +125,58 @@ export function ReverseEngineeringTool({ onRegisterScan }: { onRegisterScan: (fn
           case "xxd":
             endpoint = "/api/misc/reverse/xxd"
             formData.append("length", xxdLength.toString())
+            commandString += ` -l ${xxdLength}`
+            parameters = { length: xxdLength }
             break
         }
 
-        response = await fetch(endpoint, {
-          method: "POST",
-          body: formData,
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
+        executionId = await startExecution({
+          tool: tool,
+          command: commandString,
+          parameters: parameters,
+          target: file.name,
+          results_summary: "",
         })
 
+        const response = await fetch(endpoint, {
+          method: "POST",
+          body: formData,
+        })
+
+        const duration = Date.now() - startTime
+
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || "Request failed")
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+          const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+
+          if (executionId) {
+            await completeExecution(executionId, "", duration, "failed", apiError)
+          }
+          setIsLoading(false)
+          throw new Error(apiError)
         }
 
         const data = await response.json()
-        return data.output || "No output received"
+        const output = data.output || "No output received"
+
+        // Complete (success)
+        if (executionId) {
+          await completeExecution(executionId, output, duration, "completed", "")
+        }
+
+        setIsLoading(false)
+        return output
       } catch (err) {
-        console.error("Reverse engineering error:", err)
+        const errorMessage = (err as { message?: string })?.message || "Unknown error"
+        if (executionId) {
+          await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+        }
+        setIsLoading(false)
+        setError(errorMessage)
         throw err
       }
     })
-  }, [file, tool, r2Command, gdbCommand, objdumpArgs, xxdLength, onRegisterScan])
+  }, [file, tool, r2Command, gdbCommand, objdumpArgs, xxdLength, onRegisterScan, startExecution, completeExecution])
 
 
   const showAdvancedOptions = tool === "radare2" || tool === "gdb"
@@ -297,6 +327,12 @@ export function ReverseEngineeringTool({ onRegisterScan }: { onRegisterScan: (fn
                 )}
               </div>
             )}
+          </div>
+        )}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="animate-spin h-4 w-4" />
+            Running {tool}...
           </div>
         )}
         {error && (

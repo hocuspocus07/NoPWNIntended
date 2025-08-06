@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronDown, ChevronRight, Search, HardDriveDownload, Upload, Loader2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Search, HardDriveDownload, Upload, Loader2 } from 'lucide-react'
 import { toast } from "sonner"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -14,8 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useToolTracking } from "@/hooks/use-tool-tracking" 
 
 export function ForensicsTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
+  const { startExecution, completeExecution } = useToolTracking()
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -82,6 +84,14 @@ export function ForensicsTool({ onRegisterScan }: { onRegisterScan: (fn: () => P
         throw new Error("Please select a disk image file")
       }
 
+      setIsLoading(true)
+      setError(null)
+
+      const startTime = Date.now()
+      let executionId: string | undefined
+      let commandString = `${tool} ${file.name}`
+      let parameters: Record<string, any> = {}
+
       try {
         const formData = new FormData()
         formData.append("file", file)
@@ -92,61 +102,86 @@ export function ForensicsTool({ onRegisterScan }: { onRegisterScan: (fn: () => P
           case "tsk":
             endpoint = "/api/misc/forensics/tsk"
             formData.append("command", tskCommand)
+            commandString += ` ${tskCommand}`
+            parameters = { command: tskCommand }
             if (tskCommand === "icat") {
               formData.append("inode", inode)
+              commandString += ` ${inode}`
+              parameters.inode = inode
             }
             break
           case "binwalk":
             endpoint = "/api/misc/forensics/binwalk"
             formData.append("entropyScan", String(entropyScan))
             formData.append("extractFiles", String(binwalkExtract))
+            if (entropyScan) commandString += ` -E`
+            if (binwalkExtract) commandString += ` -e`
+            parameters = { entropyScan, extractFiles: binwalkExtract }
             break
           case "foremost":
             endpoint = "/api/misc/forensics/foremost"
             if (foremostConfig) {
               formData.append("configFile", foremostConfig)
+              commandString += ` -c ${foremostConfig}`
+              parameters = { configFile: foremostConfig }
             }
             break
           case "testdisk":
             endpoint = "/api/misc/forensics/testdisk"
             formData.append("partitionType", partitionType)
+            commandString += ` -t ${partitionType}`
+            parameters = { partitionType }
             break
         }
 
-        // Get the auth token
-        let token = localStorage.getItem("access_token");
-        if (!token) {
-          const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
-          if (supa) {
-            try {
-              token = JSON.parse(supa).access_token;
-            } catch (e) {
-              token = null;
-            }
-          }
-        }
+        // Start execution tracking
+        executionId = await startExecution({
+          tool: tool,
+          command: commandString,
+          parameters: parameters,
+          target: file.name,
+          results_summary: "",
+        })
 
         const response = await fetch(endpoint, {
           method: "POST",
           body: formData,
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
         })
 
+        const duration = Date.now() - startTime
+
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || "Request failed")
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+          const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+
+          if (executionId) {
+            await completeExecution(executionId, "", duration, "failed", apiError)
+          }
+          setIsLoading(false)
+          throw new Error(apiError)
         }
 
         const data = await response.json()
-        return data.output || "No output received"
+        const output = data.output || "No output received"
+
+        // Complete (success)
+        if (executionId) {
+          await completeExecution(executionId, output, duration, "completed", "")
+        }
+
+        setIsLoading(false)
+        return output
       } catch (err) {
-        console.error("Forensics error:", err)
+        const errorMessage = (err as { message?: string })?.message || "Unknown error"
+        if (executionId) {
+          await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+        }
+        setIsLoading(false)
+        setError(errorMessage)
         throw err
       }
     })
-  }, [file, tool, tskCommand, inode, entropyScan, binwalkExtract, foremostConfig, partitionType, onRegisterScan])
+  }, [file, tool, tskCommand, inode, entropyScan, binwalkExtract, foremostConfig, partitionType, onRegisterScan, startExecution, completeExecution])
 
   const hasAdvancedOptions = ["binwalk", "testdisk"].includes(tool)
 
@@ -296,6 +331,12 @@ export function ForensicsTool({ onRegisterScan }: { onRegisterScan: (fn: () => P
                 )}
               </div>
             )}
+          </div>
+        )}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="animate-spin h-4 w-4" />
+            Running {tool}...
           </div>
         )}
         {error && (
