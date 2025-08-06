@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mail, Search, Loader2, ChevronDown, ChevronRight, ShieldAlert } from "lucide-react"
+import { Mail, Search, Loader2, ChevronDown, ChevronRight, ShieldAlert } from 'lucide-react'
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -15,9 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useEffect } from "react"
+import { useToolTracking } from "@/hooks/use-tool-tracking"
 
 export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
+  const { startExecution, completeExecution } = useToolTracking()
   const [email, setEmail] = useState("")
   const [options, setOptions] = useState({
     onlyUsed: false,
@@ -32,11 +33,10 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
 
   const outputFormats = [
     { value: "text", label: "Text" },
-    { value: "json", label: "JSON" },
     { value: "csv", label: "CSV" },
   ]
 
-   useEffect(() => {
+  useEffect(() => {
     onRegisterScan(async () => {
       if (!email) {
         throw new Error("Please enter an email address")
@@ -47,29 +47,31 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
         throw new Error("Please enter a valid email address")
       }
 
-      // Get the current session
-      let token = localStorage.getItem("access_token");
-      if (!token) {
-        const supa = localStorage.getItem('sb-xkhhbysnfzdhkhbjtyut-auth-token');
-        if (supa) {
-          try {
-            token = JSON.parse(supa).access_token;
-          } catch (e) {
-            token = null;
-          }
-        }
-      }
-      console.log("Token used for fetch:", token);
-
       setIsLoading(true)
       setError(null)
-      
+
+      const startTime = Date.now()
+      let executionId: string | undefined
+
       try {
+        // Construct the command string for tracking
+        let commandString = `holehe ${email}`
+        if (options.onlyUsed) commandString += ` --only-used`
+        if (options.timeout !== 5) commandString += ` --timeout ${options.timeout}`
+
+        // Start execution tracking
+        executionId = await startExecution({
+          tool: "Holehe",
+          command: commandString,
+          parameters: options,
+          target: email,
+          results_summary: "", 
+        })
+
         const response = await fetch("/api/osint/holehe", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({
             email,
@@ -77,21 +79,39 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
           })
         })
 
+        const duration = Date.now() - startTime
+
         if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || "Email check failed")
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+          const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+
+          if (executionId) {
+            await completeExecution(executionId, "", duration, "failed", apiError)
+          }
+          setIsLoading(false)
+          throw new Error(apiError)
         }
 
         const result = await response.json()
-        return typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2)
-      } catch (err) {
-        console.error("Holehe error:", err)
-        throw err
-      } finally {
+        const output = typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2)
+
+        if (executionId) {
+          await completeExecution(executionId, output, duration, "completed", "")
+        }
+
         setIsLoading(false)
+        return output
+      } catch (err) {
+        const errorMessage = (err as { message?: string })?.message || "Unknown error"
+        if (executionId) {
+          await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+        }
+        setIsLoading(false)
+        setError(errorMessage)
+        throw err
       }
     })
-  }, [email, options, onRegisterScan])
+  }, [email, options, onRegisterScan, startExecution, completeExecution])
 
 
   return (
@@ -114,11 +134,11 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label>Output Format</Label>
-            <Select 
-              value={options.outputFormat} 
+            <Select
+              value={options.outputFormat}
               onValueChange={(value) => setOptions({...options, outputFormat: value})}
             >
               <SelectTrigger>
@@ -146,23 +166,14 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
           {advancedOpen && (
             <div className="rounded-md border p-4 space-y-4">
               <div className="flex items-center space-x-2">
-                <Switch 
-                  id="only-used" 
+                <Switch
+                  id="only-used"
                   checked={options.onlyUsed}
                   onCheckedChange={(checked) => setOptions({...options, onlyUsed: checked})}
                 />
                 <Label htmlFor="only-used">Only show used accounts</Label>
               </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="verbose" 
-                  checked={options.verbose}
-                  onCheckedChange={(checked) => setOptions({...options, verbose: checked})}
-                />
-                <Label htmlFor="verbose">Verbose output</Label>
-              </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="timeout">Timeout (seconds)</Label>
                 <Input
@@ -174,20 +185,17 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
                   onChange={(e) => setOptions({...options, timeout: Number(e.target.value)})}
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="exclude">Exclude services (comma separated)</Label>
-                <Input
-                  id="exclude"
-                  placeholder="twitter,instagram"
-                  value={options.exclude}
-                  onChange={(e) => setOptions({...options, exclude: e.target.value})}
-                />
-              </div>
             </div>
           )}
         </div>
-        
+
+        {isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="animate-spin h-4 w-4" />
+            Running Holehe...
+          </div>
+        )}
+
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">
             {error}
