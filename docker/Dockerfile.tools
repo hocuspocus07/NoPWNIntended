@@ -39,6 +39,8 @@ RUN apt-get update && \
     libewf2 \
     ewf-tools \
     jq \
+    openvpn\
+    sudo\
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && \
