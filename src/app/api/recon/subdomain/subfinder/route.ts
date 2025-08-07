@@ -1,8 +1,24 @@
 import { NextResponse } from "next/server";
 import { runSubfinder } from "@/lib/runners/runSubfinder";
-
+import { createClient } from "@/utils/supabase/server";
 export async function POST(request:Request) {
     try {
+        const supabase = await createClient();
+            const {
+              data: { user },
+              error: userError,
+            } = await supabase.auth.getUser();
+        
+            if (userError || !user) {
+              console.error(
+                "SUBFINDER API: Authentication required or user not found",
+                userError?.message
+              );
+              return NextResponse.json(
+                { error: "Authentication required" },
+                { status: 401 }
+              );
+            }
         const body=await request.json();
         const scanResults=await runSubfinder(body.domain);
         return NextResponse.json({

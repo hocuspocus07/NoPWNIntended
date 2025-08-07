@@ -1,22 +1,24 @@
 import { NextResponse } from "next/server";
 import { runAssetFinder } from "@/lib/runners/runAssetfinder";
-import { createClient } from "@supabase/supabase-js";
-
+import { createClient } from "@/utils/supabase/server";
 export async function POST(request: Request) {
     try {
-        const authHeader = request.headers.get("authorization") || "";
-        const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : "";
-        if (!token) throw new Error("Auth session missing!");
-
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            { global: { headers: { Authorization: `Bearer ${token}` } } }
-        );
-
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("No user found");
-
+        const supabase = await createClient();
+            const {
+              data: { user },
+              error: userError,
+            } = await supabase.auth.getUser();
+        
+            if (userError || !user) {
+              console.error(
+                "ASSETFINDER API: Authentication required or user not found",
+                userError?.message
+              );
+              return NextResponse.json(
+                { error: "Authentication required" },
+                { status: 401 }
+              );
+            }
         const { domain } = await request.json();
         if (!domain) throw new Error("Domain is required");
 

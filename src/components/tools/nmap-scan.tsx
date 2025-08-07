@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { useToolTracking } from "@/hooks/use-tool-tracking" 
+import { Loader2 } from 'lucide-react'
 
 type ScanType = 
   | "fast" 
@@ -24,6 +26,7 @@ type ScanType =
   | "http-vuln"
 
 export function NmapPanel({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
+  const { startExecution, completeExecution } = useToolTracking()
   const [target, setTarget] = useState("")
   const [activeScan, setActiveScan] = useState<ScanType>("port")
   const [advancedOptions, setAdvancedOptions] = useState({
@@ -35,19 +38,19 @@ export function NmapPanel({ onRegisterScan }: { onRegisterScan: (fn: () => Promi
     portRange: "21,22,80,443,8080",
     topPorts: 20,
   })
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const generateCommand = (scanType: ScanType): { command: string, options: any } => {
-    let options = {
+  const generateCommand = (scanType: ScanType): { command: string, parameters: any } => {
+    let params = {
       target,
       ports: "",
       scripts: "",
       options: ""
     }
 
-    // Base options
-    let baseOptions = ["-T4"] // Always use timing template 4
+    let baseOptions = ["-T4"] 
 
-    // Add checkboxes options
     if (advancedOptions.serviceDetection) baseOptions.push("-sV")
     if (advancedOptions.defaultScripts) baseOptions.push("-sC")
     if (advancedOptions.osDetection) baseOptions.push("-O")
@@ -56,13 +59,13 @@ export function NmapPanel({ onRegisterScan }: { onRegisterScan: (fn: () => Promi
     switch(scanType) {
       case "fast":
         baseOptions.push("-F")
-        options.ports = advancedOptions.portRange
+        params.ports = advancedOptions.portRange
         break
       case "ping":
-        baseOptions = ["-sn"] // Replace all options for ping scan
+        baseOptions = ["-sn"]
         break
       case "port":
-        options.ports = advancedOptions.portRange
+        params.ports = advancedOptions.portRange
         break
       case "os":
         baseOptions.push("-O")
@@ -71,8 +74,8 @@ export function NmapPanel({ onRegisterScan }: { onRegisterScan: (fn: () => Promi
         baseOptions = ["-A", "-T4"]
         break
       case "cve-2021-41773":
-        options.scripts = 'http-vuln-cve-2021-41773'
-        options.ports = '80,443,8080'
+        params.scripts = 'http-vuln-cve-2021-41773'
+        params.ports = '80,443,8080'
         break
       case "top-ports":
         baseOptions.push(`--top-ports ${advancedOptions.topPorts}`)
@@ -81,28 +84,29 @@ export function NmapPanel({ onRegisterScan }: { onRegisterScan: (fn: () => Promi
         baseOptions.push("-sU")
         break
       case "malware":
-        options.scripts = 'http-malware-host'
-        options.ports = '80,443,8080'
+        params.scripts = 'http-malware-host'
+        params.ports = '80,443,8080'
         break
       case "banner":
-        options.scripts = 'banner'
+        params.scripts = 'banner'
         break
       case "http-headers":
-        options.scripts = 'http-headers'
-        options.ports = '80,443,8080'
+        params.scripts = 'http-headers'
+        params.ports = '80,443,8080'
         break
       case "http-vuln":
-        options.scripts = 'http-vuln*'
-        options.ports = '80,443,8080'
+        params.scripts = 'http-vuln*'
+        params.ports = '80,443,8080'
         break
     }
 
-    // Combine all options
-    options.options = [...new Set(baseOptions)].join(" ") // Remove duplicates
+    params.options = [...new Set(baseOptions)].join(" ")
+
+    const commandString = `nmap ${params.options} ${params.ports ? '-p ' + params.ports : ''} ${params.scripts ? '--script ' + params.scripts : ''} ${target}`;
 
     return {
-      command: `nmap ${options.options} ${options.ports ? '-p ' + options.ports : ''} ${options.scripts ? '--script ' + options.scripts : ''} ${target}`,
-      options
+      command: commandString,
+      parameters: { ...params, scanType, advancedOptions }
     }
   }
 
@@ -120,33 +124,67 @@ export function NmapPanel({ onRegisterScan }: { onRegisterScan: (fn: () => Promi
       return
     }
 
-    const { command, options } = generateCommand(scanType)
+    const { command, parameters } = generateCommand(scanType)
     
     const scanFn = async () => {
+      setIsLoading(true)
+      setError(null)
+      const startTime = Date.now()
+      let executionId: string | undefined
+
       try {
+        // Start execution tracking
+        executionId = await startExecution({
+          tool: "Nmap",
+          command: command,
+          parameters: parameters,
+          target: target,
+          results_summary: "",
+        })
+
         const response = await fetch('/api/recon/nmap', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            target: options.target,
-            ports: options.ports,
-            scripts: options.scripts,
-            options: options.options
+            target: parameters.target,
+            ports: parameters.ports,
+            scripts: parameters.scripts,
+            options: parameters.options
           })
         })
 
-        const result = await response.json()
+        const duration = Date.now() - startTime
         
         if (!response.ok) {
-          throw new Error(result.error || "Scan failed")
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+          const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+
+          if (executionId) {
+            await completeExecution(executionId, "", duration, "failed", apiError)
+          }
+          setIsLoading(false)
+          throw new Error(apiError)
         }
 
-        return result.data && result.data.trim() ? result.data : "No output from scan"
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error occurred"
-        throw new Error(message)
+        const result = await response.json()
+        const output = result.data && result.data.trim() ? result.data : "No output from scan"
+
+        if (executionId) {
+          await completeExecution(executionId, output, duration, "completed", "")
+        }
+
+        setIsLoading(false)
+        return output
+      } catch (err) {
+        const errorMessage = (err as { message?: string })?.message || "Unknown error"
+        if (executionId) {
+          await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+        }
+        setIsLoading(false)
+        setError(errorMessage)
+        throw err
       }
     }
 
@@ -344,6 +382,17 @@ export function NmapPanel({ onRegisterScan }: { onRegisterScan: (fn: () => Promi
           </div>
         </div>
       </div>
+      {isLoading && (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="animate-spin h-4 w-4" />
+          Running Nmap scan...
+        </div>
+      )}
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">
+          Error: {error}
+        </div>
+      )}
     </div>
   )
 }

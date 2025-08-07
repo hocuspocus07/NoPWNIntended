@@ -20,7 +20,7 @@ import { title } from "process"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Button } from "./ui/button"
 import { PanelLeftIcon } from "lucide-react"
-const data = {
+export const data = {
   teams: [
     {
       name: "Red Team",

@@ -1,12 +1,28 @@
 import { NextResponse } from 'next/server'
 import { runNmap } from '@/lib/runners/runNmap'
- 
+ import { createClient } from '@/utils/supabase/server';
 export async function GET() {
   return NextResponse.json({ message: "HELLO" })
 }
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createClient();
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+    
+        if (userError || !user) {
+          console.error(
+            "NMAP API: Authentication required or user not found",
+            userError?.message
+          );
+          return NextResponse.json(
+            { error: "Authentication required" },
+            { status: 401 }
+          );
+        }
     const body = await request.json();
     
     if (!body.target) {

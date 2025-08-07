@@ -27,7 +27,7 @@ export function SubdomainResults({
 }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 50
+  const itemsPerPage = 10
 
   const filteredResults = results.filter(result =>
     result.subdomain.toLowerCase().includes(searchTerm.toLowerCase())
