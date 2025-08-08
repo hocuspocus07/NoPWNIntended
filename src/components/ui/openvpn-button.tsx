@@ -8,8 +8,9 @@ import {
   DialogTrigger,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "./input";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { UploadIcon, CheckCircle, CircleSlash2, FileText, X, Wifi, WifiOff, Clock, ShieldOff, ShieldUser } from 'lucide-react';
+import { UploadIcon,CircleSlash2,CheckCircle, TestTube,Loader2, FileText, X, Wifi, WifiOff, Clock, ShieldOff, ShieldUser } from 'lucide-react';
 import { useState,useEffect,useCallback } from "react";
 interface OpenVPNDialogProps {
   connected: boolean;
@@ -18,11 +19,20 @@ interface OpenVPNDialogProps {
   onSuccess: () => void;
   onDisconnect: () => void;
 }
-
+interface TestResult {
+  success: boolean;
+  statusCode?: number;
+  responseTime?: number;
+  error?: string;
+  vpnConnected: boolean;
+}
 const OpenVPNDialog = ({ connected, timeRemaining, fileName, onSuccess, onDisconnect }: OpenVPNDialogProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [testUrl, setTestUrl] = useState("");
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
 
   const formatTimeRemaining = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
@@ -60,7 +70,76 @@ const OpenVPNDialog = ({ connected, timeRemaining, fileName, onSuccess, onDiscon
     setFile(null);
     setError(null);
   };
+const handleTestConnection = async () => {
+    if (!testUrl.trim()) {
+      setError("Please enter a test URL");
+      return;
+    }
 
+    setTestLoading(true);
+    setTestResult(null);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/openvpn/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: testUrl.trim() }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Test failed");
+      } else {
+        setTestResult(data.data);
+      }
+    } catch (err) {
+      setError("Something went wrong during the test.");
+    } finally {
+      setTestLoading(false);
+    }
+  };
+  const renderTestResult = () => {
+    if (!testResult) return null;
+
+    const { success, statusCode, responseTime, error: testError, vpnConnected } = testResult;
+
+    return (
+      <div className={`mt-3 p-3 rounded border ${success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+        <div className="flex items-center gap-2 mb-2">
+          {success ? (
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          ) : (
+            <CircleSlash2 className="h-4 w-4 text-red-600" />
+          )}
+          <span className={`font-medium text-sm ${success ? 'text-green-800' : 'text-red-800'}`}>
+            {success ? 'Connection Test Passed' : 'Connection Test Failed'}
+          </span>
+        </div>
+        
+        <div className="text-xs space-y-1">
+          {statusCode && (
+            <div>Status Code: <span className="font-mono">{statusCode}</span></div>
+          )}
+          {responseTime && (
+            <div>Response Time: <span className="font-mono">{responseTime}ms</span></div>
+          )}
+          {testError && (
+            <div className="text-red-600">Error: {testError}</div>
+          )}
+          <div>
+            VPN Status: <span className={`font-medium ${vpnConnected ? 'text-green-600' : 'text-red-600'}`}>
+              {vpnConnected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
   const handleConnect = async () => {
     if (!file) {
       setError("Please select a .ovpn file first.");
@@ -141,10 +220,31 @@ const OpenVPNDialog = ({ connected, timeRemaining, fileName, onSuccess, onDiscon
               <span>Auto-disconnect in {formatTimeRemaining(timeRemaining)}</span>
             </div>
           )}
-          
-          <p className="text-sm text-muted-foreground">
-            Your VPN connection is active
-          </p>
+          <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-2">Test your connection:</p>
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  placeholder="Enter test URL (e.g., http://10.10.10.10)"
+                  value={testUrl}
+                  onChange={(e) => setTestUrl(e.target.value)}
+                  className="text-sm"
+                />
+                <Button
+                  onClick={handleTestConnection}
+                  disabled={testLoading}
+                  size="sm"
+                  variant="outline"
+                >
+                  {testLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <TestTube className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {renderTestResult()}
+            </div>
         </div>
 
         {error && <p className="text-red-600 text-sm">{error}</p>}

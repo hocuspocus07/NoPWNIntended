@@ -14,6 +14,13 @@ type ConnectionStatus = {
   fileName?: string
 }
 
+type TestResult = {
+  success: boolean
+  statusCode?: number
+  responseTime?: number
+  error?: string
+  vpnConnected: boolean
+}
 export async function runOpenVPN({
   fileContent,
   fileName,
@@ -283,4 +290,86 @@ function humanizeOpenVpnError(stderr: string, code: number, container: string) {
 function trimTail(text: string, lines = 10) {
   const parts = text.trim().split("\n")
   return parts.slice(Math.max(0, parts.length - lines)).join("\n")
+}
+
+export async function testVPNConnection(userId: string, url: string): Promise<TestResult> {
+  const container =
+    process.env.NEXT_PUBLIC_CONTAINER_NAME
+  if (!container) throw new Error("CONTAINER_NAME not defined")
+
+  const safeId = userId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24) || "anon"
+  const pidPath = `/var/run/openvpn-${safeId}.pid`
+
+  const vpnConnected = await new Promise<boolean>((resolve) => {
+    const checkSh = `[ -f "${pidPath}" ] && kill -0 \$(cat "${pidPath}") 2>/dev/null && echo "true" || echo "false"`
+    const proc = spawn("docker", ["exec", "-i", container, "sh", "-c", checkSh])
+    
+    let stdout = ""
+    proc.stdout.on("data", (d) => { stdout += d.toString() })
+    proc.on("close", () => {
+      resolve(stdout.trim() === "true")
+    })
+  })
+
+  if (!vpnConnected) {
+    return {
+      success: false,
+      error: "VPN is not connected",
+      vpnConnected: false
+    }
+  }
+
+  const testSh = `
+set -e
+START_TIME=\$(date +%s%3N)
+HTTP_CODE=\$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 --connect-timeout 5 "${url}" 2>/dev/null || echo "000")
+END_TIME=\$(date +%s%3N)
+RESPONSE_TIME=\$((END_TIME - START_TIME))
+
+echo "{\\"statusCode\\": \$HTTP_CODE, \\"responseTime\\": \$RESPONSE_TIME}"
+`
+
+  return new Promise<TestResult>((resolve) => {
+    const proc = spawn("docker", ["exec", "-i", container, "sh", "-c", testSh])
+
+    let stdout = ""
+    let stderr = ""
+
+    proc.stdout.on("data", (d) => {
+      stdout += d.toString()
+    })
+    proc.stderr.on("data", (d) => {
+      stderr += d.toString()
+    })
+
+    proc.on("close", (code) => {
+      try {
+        if (code === 0 && stdout.trim()) {
+          const result = JSON.parse(stdout.trim())
+          const statusCode = parseInt(result.statusCode)
+          const responseTime = parseInt(result.responseTime)
+
+          resolve({
+            success: statusCode >= 200 && statusCode < 400,
+            statusCode,
+            responseTime,
+            vpnConnected: true,
+            error: statusCode === 0 ? "Connection failed or timeout" : undefined
+          })
+        } else {
+          resolve({
+            success: false,
+            error: stderr || "Test failed",
+            vpnConnected: true
+          })
+        }
+      } catch (parseError) {
+        resolve({
+          success: false,
+          error: "Failed to parse test results",
+          vpnConnected: true
+        })
+      }
+    })
+  })
 }
