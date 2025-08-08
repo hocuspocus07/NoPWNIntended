@@ -1,14 +1,25 @@
 services:
   app:
+    image: pwntools/pwntools:latest
     container_name: pwntools
+    user: "0:0"
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - NET_RAW   
+    security_opt:
+      - apparmor:unconfined
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    restart: unless-stopped
     build:
       context: ..
-      dockerfile: docker/Dockerfile.tools    
+      dockerfile: docker/Dockerfile.tools
     volumes:
-      - ../src:/app/src                    
+      - ../src:/app/src
       - ../package.json:/app/package.json
       - ../package-lock.json:/app/package-lock.json
-      - C:/Users/Lenovo/Desktop/coding/next tuts/no-pwn-intended/docker/scripts:/docker/scripts
+      - ./docker/scripts:/docker/scripts
     ports:
       - "3001:3000"
-    command: npm run dev                    
+    command: npm run dev
