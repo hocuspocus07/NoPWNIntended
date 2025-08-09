@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { ChevronDown, ChevronRight, FolderSearch } from "lucide-react"
+import { ChevronDown, ChevronRight, FolderSearch, Loader2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToolTracking } from "@/hooks/use-tool-tracking"
 
 interface ScanProgress {
   current: number
@@ -17,6 +18,7 @@ interface ScanProgress {
 }
 
 export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
+  const { startExecution, completeExecution } = useToolTracking() 
   const [url, setUrl] = useState("")
   const [options, setOptions] = useState({
     tool: "ffuf" as "ffuf" | "gobuster" | "dirsearch",
@@ -41,23 +43,29 @@ export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: 
         throw new Error("Invalid URL format. Must start with http:// or https://")
       }
 
-      let token = localStorage.getItem("access_token")
-      if (!token) {
-        const supa = localStorage.getItem("sb-xkhhbysnfzdhkhbjtyut-auth-token")
-        if (supa) {
-          try {
-            token = JSON.parse(supa).access_token
-          } catch (e) {
-            token = null
-          }
-        }
-      }
-
       setIsLoading(true)
       setError(null)
       setProgress(null)
 
+      const startTime = Date.now()
+      let executionId: string | undefined
+      let commandString = `${options.tool} -u ${url}/FUZZ -w ${options.wordlist}`
+      const parameters: Record<string, any> = { url, ...options }
+
+      if (options.threads !== 40) commandString += ` -t ${options.threads}`
+      if (options.extensions) commandString += ` -e ${options.extensions}`
+      if (options.recursive) commandString += ` -recursion`
+      if (options.followRedirects) commandString += ` -r`
+
       try {
+        executionId = await startExecution({
+          tool: `Directory Brute Force (${options.tool.toUpperCase()})`,
+          command: commandString,
+          parameters: parameters,
+          target: url,
+          results_summary: "",
+        })
+
         const endpoint = `/api/exploitation/directory-brute/${options.tool}`
         const body = {
           url,
@@ -72,27 +80,43 @@ export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: 
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(body),
         })
 
+        const duration = Date.now() - startTime
+
         if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || "Directory brute force failed")
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+          const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+
+          if (executionId) {
+            await completeExecution(executionId, "", duration, "failed", apiError)
+          }
+          setIsLoading(false)
+          throw new Error(apiError)
         }
 
         const result = await response.json()
-        return result.data
-      } catch (err) {
-        console.error("Directory brute force error:", err)
-        throw err
-      } finally {
+        const output = typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2)
+
+        if (executionId) {
+          await completeExecution(executionId, output, duration, "completed", "")
+        }
+
         setIsLoading(false)
-        setProgress(null)
+        return output
+      } catch (err) {
+        const errorMessage = (err as { message?: string })?.message || "Unknown error"
+        if (executionId) {
+          await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+        }
+        setIsLoading(false)
+        setError(errorMessage)
+        throw err
       }
     })
-  }, [url, options, onRegisterScan])
+  }, [url, options, onRegisterScan, startExecution, completeExecution])
 
   const tools = [
     { value: "ffuf", label: "FFUF (Fast)" },
@@ -262,6 +286,13 @@ export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: 
             </div>
           )}
         </div>
+
+        {isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="animate-spin h-4 w-4" />
+            Running {options.tool} scan...
+          </div>
+        )}
 
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900 dark:text-red-200">

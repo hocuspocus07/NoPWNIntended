@@ -92,7 +92,6 @@ ENV PATH="/opt/dirsearch:/opt/XSStrike:/opt/NoSQLMap:/opt/nosql-exploitation-fra
 
 COPY package.json package-lock.json ./
 RUN npm install
-COPY . .
 
 # (Optional) Installation verification for troubleshooting
 RUN echo "=== Tool Verification ===" && \

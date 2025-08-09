@@ -19,7 +19,7 @@ services:
       - ../src:/app/src
       - ../package.json:/app/package.json
       - ../package-lock.json:/app/package-lock.json
-      - ./docker/scripts:/docker/scripts
+      - C:/Users/Lenovo/Desktop/coding/next tuts/no-pwn-intended/docker/scripts:/docker/scripts
     ports:
       - "3001:3000"
     command: npm run dev

@@ -74,12 +74,12 @@ export const data = {
         {
           title: "Directory Brute Forcer",
         },
-        {
-          title: "SQLi Scanner",
-        },
-        {
-          title: "XSS Tester",
-        },
+        // {
+        //   title: "SQLi Scanner",
+        // },
+        // {
+        //   title: "XSS Tester",
+        // },
       ],
     },
     {
