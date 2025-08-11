@@ -17,6 +17,7 @@ import { ReverseEngineeringTool } from "./tools/reverse-engineering"
 import { HoleheTool } from "./tools/holehe"
 import { SherlockTool } from "./tools/sherlock"
 import { ExifTool } from "./tools/exiftool"
+import { PcapAnalyzer } from "./tools/pcap-analyser"
 interface ToolOptionsProps {
     activeTool: string | null
     onRegisterScan: (scanFn: () => Promise<string>) => void
@@ -52,6 +53,7 @@ function ToolOptions({ activeTool, onRegisterScan, onToolChange }: ToolOptionsPr
             {activeTool === "holehe" && <HoleheTool onRegisterScan={onRegisterScan} />}
             {activeTool === "sherlock" && <SherlockTool onRegisterScan={onRegisterScan} />}
             {activeTool === "exiftool" && <ExifTool onRegisterScan={onRegisterScan} />}
+            {activeTool === "pcap-analyzer" && <PcapAnalyzer onRegisterScan={onRegisterScan} />}
             {!activeTool && <div>Select a tool from the sidebar</div>}
         </div>
     )

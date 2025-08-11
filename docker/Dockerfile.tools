@@ -41,6 +41,7 @@ RUN apt-get update && \
     jq \
     openvpn\
     sudo\
+    bc\
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && \

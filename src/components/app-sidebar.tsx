@@ -110,7 +110,8 @@ export const data = {
       icon: ScanEye,
       items:[
         {title:"Forensics Tool"},
-        {title:"Reverse Engineering"}
+        {title:"Reverse Engineering"},
+        {title:"PCAP Analyzer"},
       ]
     },
   ],
