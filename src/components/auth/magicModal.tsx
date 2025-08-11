@@ -1,87 +1,66 @@
 "use client"
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import * as React from "react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { createClient } from "@/utils/supabase/client"
+import { signInWithMagicLink } from "@/utils/auth/auth"
 
-export default function MagicLinkModal({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
-  const [email, setEmail] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-const supabase=createClient()
-  const handleMagicLink = async () => {
-    setIsSubmitting(true)
-    setError(null)
+type MagicLinkModalProps = {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
 
-    if (!email || !email.includes("@")) {
-      setError("Please enter a valid email.")
-      setIsSubmitting(false)
-      return
+export default function MagicLinkModal({ open = false, onOpenChange = () => {} }: MagicLinkModalProps) {
+  const [email, setEmail] = React.useState("")
+  const [loading, setLoading] = React.useState(false)
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const fd = new FormData()
+      fd.set("email", email)
+      const res = await signInWithMagicLink(fd)
+      if (res?.error) {
+        toast.error(res.error)
+      } else {
+        toast.success(res?.message || "Check your email for the magic link")
+        onOpenChange(false)
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send magic link")
+    } finally {
+      setLoading(false)
     }
-
-    // Check if user exists manually
-    const { data: userData, error: profileError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single()
-
-    if (profileError) {
-      toast.error("User with this email does not exist.")
-      setError("No user found with that email.")
-      setIsSubmitting(false)
-      return
-    }
-
-    // Send magic link
-    const { error: loginError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: `${location.origin}/dashboard`,
-      },
-    })
-
-    if (loginError) {
-        if (loginError.code === "email_not_confirmed") {
-          toast.error("Please check your email to verify your account first.");
-        } else {
-          toast.error(loginError.message);
-        }
-      }else {
-      toast.success("Check your email for the magic link.")
-      onOpenChange(false); // Close modal
-    }
-
-    setIsSubmitting(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent aria-describedby="magic-desc" className="text-foreground">
         <DialogHeader>
-          <DialogTitle>Login with Magic Link</DialogTitle>
+          <DialogTitle>Login with Email</DialogTitle>
+          <DialogDescription id="magic-desc">Enter your email and we&apos;ll send you a magic link.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <Label htmlFor="email">Email Address</Label>
-          <Input
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            type="email"
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-        </div>
-        <DialogFooter>
-          <Button onClick={handleMagicLink} disabled={isSubmitting}>
-            {isSubmitting ? "Sending..." : "Send Magic Link"}
+        <form onSubmit={onSubmit} className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="magic-email">Email</Label>
+            <Input
+              id="magic-email"
+              type="email"
+              placeholder="you@example.com"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Sending..." : "Send magic link"}
           </Button>
-        </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

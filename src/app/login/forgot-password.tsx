@@ -6,32 +6,32 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { signUpWithMagicLink } from "@/utils/auth/auth"
+import { createClient } from "@/utils/supabase/client"
 
-type RegisterModalProps = {
+type ForgotPasswordModalProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
-export function RegisterModal({ open = false, onOpenChange = () => {} }: RegisterModalProps) {
+export function ForgotPasswordModal({ open = false, onOpenChange = () => {} }: ForgotPasswordModalProps) {
   const [email, setEmail] = React.useState("")
   const [loading, setLoading] = React.useState(false)
+  const supabase = createClient()
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     try {
-      const fd = new FormData()
-      fd.set("email", email)
-      const res = await signUpWithMagicLink(fd)
-      if (res?.error) {
-        toast.error(res.error)
+      const redirectTo = `${window.location.origin}/auth/callback`
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+      if (error) {
+        toast.error(error.message)
       } else {
-        toast.success(res?.message || "Check your email to complete sign up")
+        toast.success("Password reset email sent. Check your inbox.")
         onOpenChange(false)
       }
     } catch (err: any) {
-      toast.error(err?.message || "Failed to send sign up link")
+      toast.error(err?.message || "Failed to send reset email")
     } finally {
       setLoading(false)
     }
@@ -39,18 +39,18 @@ export function RegisterModal({ open = false, onOpenChange = () => {} }: Registe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby="register-desc" className="text-foreground">
+      <DialogContent aria-describedby="forgot-desc">
         <DialogHeader>
-          <DialogTitle>Sign up with Email</DialogTitle>
-          <DialogDescription id="register-desc">
-            Enter your email and we&apos;ll send you a magic link to create your account.
+          <DialogTitle>Reset your password</DialogTitle>
+          <DialogDescription id="forgot-desc">
+            Enter the email associated with your account and we&apos;ll send a reset link.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="register-email">Email</Label>
+            <Label htmlFor="forgot-email">Email</Label>
             <Input
-              id="register-email"
+              id="forgot-email"
               type="email"
               placeholder="you@example.com"
               autoComplete="email"
@@ -60,7 +60,7 @@ export function RegisterModal({ open = false, onOpenChange = () => {} }: Registe
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Sending..." : "Send magic link"}
+            {loading ? "Sending..." : "Send reset link"}
           </Button>
         </form>
       </DialogContent>
