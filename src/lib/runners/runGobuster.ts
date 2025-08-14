@@ -19,7 +19,6 @@ export async function runGoBuster(
   wordlist: WordlistPreset,
   threads: number,
   extensions = "",
-  followRedirects = false,
 ): Promise<GobusterResult> {
   const container = process.env.NEXT_PUBLIC_CONTAINER_NAME || "pwntools"
 
@@ -36,7 +35,6 @@ export async function runGoBuster(
     wordlist,
     Math.max(1, Math.min(threads, 100)).toString(),
     extensions.replace(/[^a-zA-Z0-9,]/g, "") || "none",
-    String(followRedirects),
   ]
 
   console.log("DEBUG: Executing Gobuster with args:", args.join(" "));

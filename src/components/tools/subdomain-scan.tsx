@@ -44,8 +44,6 @@ const tools = [
 ]
 
 const techniques = [
-  { id: "passive", label: "Passive Enumeration" },
-  { id: "active", label: "Active DNS Resolution" },
   { id: "bruteforce", label: "Bruteforce" },
 ]
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { runHolehe } from "@/lib/runners/runHolehe"
-import { createClient } from "@/utils/supabase/server" 
+import { createClient } from "@/utils/supabase/server"
 
 export async function POST(req: Request) {
   try {
@@ -25,6 +25,27 @@ export async function POST(req: Request) {
     }
 
     const output = await runHolehe(email, options)
+
+    if (options?.outputFormat === "csv") {
+      const csvContent = output.trim()
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+      const filename = `holehe-${email.replace("@", "_at_")}-${timestamp}.csv`
+
+      return NextResponse.json({
+        output: JSON.stringify({
+          tool: "Holehe",
+          message: `Email breach check completed for ${email}`,
+          files: [
+            {
+              name: filename,
+              type: "csv" as const,
+              content: csvContent,
+              size: new Blob([csvContent]).size,
+            },
+          ],
+        }),
+      })
+    }
 
     return NextResponse.json({ output })
   } catch (err: any) {

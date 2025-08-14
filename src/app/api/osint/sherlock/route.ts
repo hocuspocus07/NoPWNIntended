@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
 import { runSherlock } from "@/lib/runners/runSherlock"
-import { createClient } from "@/utils/supabase/server" 
+import { createClient } from "@/utils/supabase/server"
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient() 
+    const supabase = await createClient()
     const {
       data: { user },
       error: userError,
@@ -20,6 +20,48 @@ export async function POST(req: Request) {
     if (!username) throw new Error("Username is required")
 
     const output = await runSherlock(username, options)
+
+    if (options?.csv || options?.csvOutput) {
+      const csvContent = output.trim()
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+      const filename = `sherlock-${username}-${timestamp}.csv`
+
+      return NextResponse.json({
+        output: JSON.stringify({
+          tool: "Sherlock",
+          message: `Username search completed for ${username}`,
+          files: [
+            {
+              name: filename,
+              type: "csv" as const,
+              content: csvContent,
+              size: new Blob([csvContent]).size,
+            },
+          ],
+        }),
+      })
+    }
+
+    if (options?.json || options?.jsonOutput) {
+      const jsonContent = output.trim()
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+      const filename = `sherlock-${username}-${timestamp}.json`
+
+      return NextResponse.json({
+        output: JSON.stringify({
+          tool: "Sherlock",
+          message: `Username search completed for ${username}`,
+          files: [
+            {
+              name: filename,
+              type: "text" as const,
+              content: jsonContent,
+              size: new Blob([jsonContent]).size,
+            },
+          ],
+        }),
+      })
+    }
 
     return NextResponse.json({ output })
   } catch (err: any) {

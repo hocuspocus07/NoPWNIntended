@@ -1,117 +1,154 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { User, Search, Loader2, ChevronDown, ChevronRight, Network } from 'lucide-react'
-import { toast } from "sonner"
+import { User, Loader2, ChevronDown, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useToolTracking } from "@/hooks/use-tool-tracking"
 
 export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
   const { startExecution, completeExecution } = useToolTracking()
   const [username, setUsername] = useState("")
-  const [options, setOptions] = useState({
-    timeout: 60,
-    printFound: true,
-    printNotFound: false,
-    csv: false,
-    json: false,
-    site: "",
-    proxy: "",
-    tor: false,
-    uniqueTor: false,
-  })
+  const [timeout, setTimeout] = useState(60)
+  const [printFound, setPrintFound] = useState(true)
+  const [printNotFound, setPrintNotFound] = useState(false)
+  const [csv, setCsv] = useState(false)
+  const [json, setJson] = useState(false)
+  const [site, setSite] = useState("")
+  const [proxy, setProxy] = useState("")
+  const [tor, setTor] = useState(false)
+  const [uniqueTor, setUniqueTor] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    onRegisterScan(async () => {
-      if (!username) {
-        throw new Error("Please enter a username")
-      }
+  const scanFunctionRef = useRef<() => Promise<string>>(null!)
 
-      setIsLoading(true)
-      setError(null)
+  const scanFunction = useCallback(async () => {
+    if (!username) {
+      throw new Error("Please enter a username")
+    }
 
-      const startTime = Date.now()
-      let executionId: string | undefined
+    setIsLoading(true)
+    setError(null)
 
-      try {
-        let commandString = `sherlock ${username}`
-        if (options.timeout !== 60) commandString += ` --timeout ${options.timeout}`
-        if (!options.printFound) commandString += ` --no-found`
-        if (options.printNotFound) commandString += ` --print-not-found`
-        if (options.csv) commandString += ` --csv`
-        if (options.json) commandString += ` --json`
-        if (options.site) commandString += ` --site ${options.site}`
-        if (options.proxy) commandString += ` --proxy ${options.proxy}`
-        if (options.tor) commandString += ` --tor`
-        if (options.uniqueTor) commandString += ` --unique-tor`
+    const startTime = Date.now()
+    let executionId: string | undefined
 
-        executionId = await startExecution({
-          tool: "Sherlock",
-          command: commandString,
-          parameters: options,
-          target: username,
-          results_summary: "",
-        })
+    try {
+      let commandString = `sherlock ${username}`
+      if (timeout !== 60) commandString += ` --timeout ${timeout}`
+      if (!printFound) commandString += ` --print-all`
+      if (printFound) commandString += ` --print-found`
+      if (csv) commandString += ` --csv`
+      if (json) commandString += ` --json`
+      if (site) commandString += ` --site ${site}`
+      if (proxy) commandString += ` --proxy ${proxy}`
+      if (tor) commandString += ` --tor`
+      if (uniqueTor) commandString += ` --unique-tor`
 
-        const response = await fetch("/api/osint/sherlock", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+      executionId = await startExecution({
+        tool: "Sherlock",
+        command: commandString,
+        parameters: {
+          timeout,
+          printFound,
+          printNotFound,
+          csv,
+          json,
+          site,
+          proxy,
+          tor,
+          uniqueTor,
+        },
+        target: username,
+        results_summary: "",
+      })
+
+      const response = await fetch("/api/osint/sherlock", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          options: {
+            timeout,
+            printFound,
+            printNotFound,
+            csv,
+            json,
+            site,
+            proxy,
+            tor,
+            uniqueTor,
+            csvOutput: csv,
+            jsonOutput: json,
           },
-          body: JSON.stringify({
-            username,
-            options
-          })
-        })
+        }),
+      })
 
-        const duration = Date.now() - startTime
+      const duration = Date.now() - startTime
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-          const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        const apiError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
 
-          if (executionId) {
-            await completeExecution(executionId, "", duration, "failed", apiError)
-          }
-          setIsLoading(false)
-          throw new Error(apiError)
-        }
-
-        const result = await response.json()
-        const output = typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2)
-
-        // Complete (success)
         if (executionId) {
-          await completeExecution(executionId, output, duration, "completed", "")
-        }
-
-        setIsLoading(false)
-        return output
-      } catch (err) {
-        const errorMessage = (err as { message?: string })?.message || "Unknown error"
-        if (executionId) {
-          await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+          await completeExecution(executionId, "", duration, "failed", apiError)
         }
         setIsLoading(false)
-        setError(errorMessage)
-        throw err
+        throw new Error(apiError)
       }
-    })
-  }, [username, options, onRegisterScan, startExecution, completeExecution])
+
+      const result = await response.json()
+      const output = typeof result.output === "string" ? result.output : JSON.stringify(result.output, null, 2)
+
+      if (executionId) {
+        await completeExecution(executionId, output, duration, "completed", "")
+      }
+
+      setIsLoading(false)
+      return output
+    } catch (err) {
+      const errorMessage = (err as { message?: string })?.message || "Unknown error"
+      if (executionId) {
+        await completeExecution(executionId, "", Date.now() - startTime, "failed", errorMessage)
+      }
+      setIsLoading(false)
+      setError(errorMessage)
+      throw err
+    }
+  }, [
+    username,
+    timeout,
+    printFound,
+    printNotFound,
+    csv,
+    json,
+    site,
+    proxy,
+    tor,
+    uniqueTor,
+    startExecution,
+    completeExecution,
+  ])
+
+  // Update the ref with the latest function
+  scanFunctionRef.current = scanFunction
+
+  useEffect(() => {
+    const stableWrapper = () => {
+      if (scanFunctionRef.current) {
+        return scanFunctionRef.current()
+      }
+      throw new Error("Scan function not available")
+    }
+    onRegisterScan(stableWrapper)
+  }, [onRegisterScan])
 
   return (
     <Card className="w-full">
@@ -135,12 +172,7 @@ export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Pr
 
           <div className="space-y-2">
             <Label htmlFor="site">Specific Site</Label>
-            <Input
-              id="site"
-              placeholder="twitter,github,etc."
-              value={options.site}
-              onChange={(e) => setOptions({ ...options, site: e.target.value })}
-            />
+            <Input id="site" placeholder="twitter,github,etc." value={site} onChange={(e) => setSite(e.target.value)} />
           </div>
         </div>
 
@@ -159,38 +191,22 @@ export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Pr
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Switch
-                      id="print-found"
-                      checked={options.printFound}
-                      onCheckedChange={(checked) => setOptions({ ...options, printFound: checked })}
-                    />
+                    <Switch id="print-found" checked={printFound} onCheckedChange={setPrintFound} />
                     <Label htmlFor="print-found">Print found accounts</Label>
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <Switch
-                      id="print-not-found"
-                      checked={options.printNotFound}
-                      onCheckedChange={(checked) => setOptions({ ...options, printNotFound: checked })}
-                    />
+                    <Switch id="print-not-found" checked={printNotFound} onCheckedChange={setPrintNotFound} />
                     <Label htmlFor="print-not-found">Print not found accounts</Label>
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <Switch
-                      id="csv"
-                      checked={options.csv}
-                      onCheckedChange={(checked) => setOptions({ ...options, csv: checked })}
-                    />
+                    <Switch id="csv" checked={csv} onCheckedChange={setCsv} />
                     <Label htmlFor="csv">CSV output</Label>
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <Switch
-                      id="json"
-                      checked={options.json}
-                      onCheckedChange={(checked) => setOptions({ ...options, json: checked })}
-                    />
+                    <Switch id="json" checked={json} onCheckedChange={setJson} />
                     <Label htmlFor="json">JSON output</Label>
                   </div>
                 </div>
@@ -203,8 +219,8 @@ export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Pr
                       type="number"
                       min="10"
                       max="300"
-                      value={options.timeout}
-                      onChange={(e) => setOptions({ ...options, timeout: Number(e.target.value) })}
+                      value={timeout}
+                      onChange={(e) => setTimeout(Number(e.target.value))}
                     />
                   </div>
 
@@ -213,27 +229,19 @@ export function SherlockTool({ onRegisterScan }: { onRegisterScan: (fn: () => Pr
                     <Input
                       id="proxy"
                       placeholder="127.0.0.1:8080"
-                      value={options.proxy}
-                      onChange={(e) => setOptions({ ...options, proxy: e.target.value })}
+                      value={proxy}
+                      onChange={(e) => setProxy(e.target.value)}
                     />
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <Switch
-                      id="tor"
-                      checked={options.tor}
-                      onCheckedChange={(checked) => setOptions({ ...options, tor: checked })}
-                    />
+                    <Switch id="tor" checked={tor} onCheckedChange={setTor} />
                     <Label htmlFor="tor">Use Tor</Label>
                   </div>
 
-                  {options.tor && (
+                  {tor && (
                     <div className="flex items-center space-x-2">
-                      <Switch
-                        id="unique-tor"
-                        checked={options.uniqueTor}
-                        onCheckedChange={(checked) => setOptions({ ...options, uniqueTor: checked })}
-                      />
+                      <Switch id="unique-tor" checked={uniqueTor} onCheckedChange={setUniqueTor} />
                       <Label htmlFor="unique-tor">Unique Tor circuit per site</Label>
                     </div>
                   )}

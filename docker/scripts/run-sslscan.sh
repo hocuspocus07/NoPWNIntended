@@ -6,7 +6,6 @@ CERTS=$3            # true/false
 HEARTBLEED=$4
 COMPRESSION=$5
 FALLBACK=$6
-SIGNATURES=$7
 
 CMD="/opt/testssl.sh/testssl.sh --quiet"
 
@@ -17,11 +16,10 @@ fi
 # Protocol check (always print all protocols)
 CMD="$CMD -p"
 
-[[ "${CERTS,,}" == "true" ]]       && CMD="$CMD --cert"
-[[ "${HEARTBLEED,,}" == "true" ]]  && CMD="$CMD --heartbleed"
-[[ "${COMPRESSION,,}" == "true" ]] && CMD="$CMD --compression"
-[[ "${FALLBACK,,}" == "true" ]]    && CMD="$CMD --fallback"
-[[ "${SIGNATURES,,}" == "true" ]]  && CMD="$CMD --sig"
+[[ "${CERTS,,}" == "true" ]]       && CMD="$CMD -S"
+[[ "${HEARTBLEED,,}" == "true" ]]  && CMD="$CMD -H"
+[[ "${COMPRESSION,,}" == "true" ]] && CMD="$CMD -C"
+[[ "${FALLBACK,,}" == "true" ]]    && CMD="$CMD -Z"
 
 CMD="$CMD $TARGET"
 

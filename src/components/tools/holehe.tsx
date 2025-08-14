@@ -1,32 +1,23 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mail, Search, Loader2, ChevronDown, ChevronRight, ShieldAlert } from 'lucide-react'
-import { toast } from "sonner"
+import { Loader2, ChevronDown, ChevronRight, ShieldAlert } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToolTracking } from "@/hooks/use-tool-tracking"
 
 export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
   const { startExecution, completeExecution } = useToolTracking()
   const [email, setEmail] = useState("")
-  const [options, setOptions] = useState({
-    onlyUsed: false,
-    verbose: false,
-    timeout: 5,
-    exclude: "",
-    outputFormat: "text",
-  })
+  const [onlyUsed, setOnlyUsed] = useState(false)
+  const [verbose, setVerbose] = useState(false)
+  const [timeout, setTimeout] = useState(5)
+  const [exclude, setExclude] = useState("")
+  const [outputFormat, setOutputFormat] = useState("text")
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,8 +27,19 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
     { value: "csv", label: "CSV" },
   ]
 
-  useEffect(() => {
-    onRegisterScan(async () => {
+  const options = useMemo(
+    () => ({
+      onlyUsed,
+      verbose,
+      timeout,
+      exclude,
+      outputFormat,
+    }),
+    [onlyUsed, verbose, timeout, exclude, outputFormat],
+  )
+
+  const scanFunction = useMemo(
+    () => async () => {
       if (!email) {
         throw new Error("Please enter an email address")
       }
@@ -65,7 +67,7 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
           command: commandString,
           parameters: options,
           target: email,
-          results_summary: "", 
+          results_summary: "",
         })
 
         const response = await fetch("/api/osint/holehe", {
@@ -75,8 +77,8 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
           },
           body: JSON.stringify({
             email,
-            options
-          })
+            options,
+          }),
         })
 
         const duration = Date.now() - startTime
@@ -93,7 +95,7 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
         }
 
         const result = await response.json()
-        const output = typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2)
+        const output = typeof result.output === "string" ? result.output : JSON.stringify(result.output, null, 2)
 
         if (executionId) {
           await completeExecution(executionId, output, duration, "completed", "")
@@ -110,9 +112,13 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
         setError(errorMessage)
         throw err
       }
-    })
-  }, [email, options, onRegisterScan, startExecution, completeExecution])
+    },
+    [email, options, startExecution, completeExecution],
+  )
 
+  useEffect(() => {
+    onRegisterScan(scanFunction)
+  }, [onRegisterScan, scanFunction])
 
   return (
     <Card className="w-full">
@@ -137,16 +143,15 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
 
           <div className="space-y-2">
             <Label>Output Format</Label>
-            <Select
-              value={options.outputFormat}
-              onValueChange={(value) => setOptions({...options, outputFormat: value})}
-            >
+            <Select value={outputFormat} onValueChange={setOutputFormat}>
               <SelectTrigger>
                 <SelectValue placeholder="Select format" />
               </SelectTrigger>
               <SelectContent>
-                {outputFormats.map(f => (
-                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                {outputFormats.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>
+                    {f.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -166,11 +171,7 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
           {advancedOpen && (
             <div className="rounded-md border p-4 space-y-4">
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="only-used"
-                  checked={options.onlyUsed}
-                  onCheckedChange={(checked) => setOptions({...options, onlyUsed: checked})}
-                />
+                <Switch id="only-used" checked={onlyUsed} onCheckedChange={setOnlyUsed} />
                 <Label htmlFor="only-used">Only show used accounts</Label>
               </div>
 
@@ -181,8 +182,8 @@ export function HoleheTool({ onRegisterScan }: { onRegisterScan: (fn: () => Prom
                   type="number"
                   min="1"
                   max="30"
-                  value={options.timeout}
-                  onChange={(e) => setOptions({...options, timeout: Number(e.target.value)})}
+                  value={timeout}
+                  onChange={(e) => setTimeout(Number(e.target.value))}
                 />
               </div>
             </div>

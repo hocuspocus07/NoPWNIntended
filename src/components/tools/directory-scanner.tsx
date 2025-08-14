@@ -255,33 +255,38 @@ export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: 
                   />
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="recursive"
-                    checked={options.recursive}
-                    onCheckedChange={(checked) =>
-                      setOptions({
-                        ...options,
-                        recursive: checked,
-                      })
-                    }
-                  />
-                  <Label htmlFor="recursive">Recursive Scan</Label>
-                </div>
+                {(options.tool === "ffuf" || options.tool === "dirsearch") && (
+  <>
+    <div className="flex items-center space-x-2">
+      <Switch
+        id="recursive"
+        checked={options.recursive}
+        onCheckedChange={(checked) =>
+          setOptions({
+            ...options,
+            recursive: checked,
+          })
+        }
+      />
+      <Label htmlFor="recursive">Recursive Scan</Label>
+    </div>
 
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="follow-redirects"
-                    checked={options.followRedirects}
-                    onCheckedChange={(checked) =>
-                      setOptions({
-                        ...options,
-                        followRedirects: checked,
-                      })
-                    }
-                  />
-                  <Label htmlFor="follow-redirects">Follow Redirects</Label>
-                </div>
+    <div className="flex items-center space-x-2">
+      <Switch
+        id="follow-redirects"
+        checked={options.followRedirects}
+        onCheckedChange={(checked) =>
+          setOptions({
+            ...options,
+            followRedirects: checked,
+          })
+        }
+      />
+      <Label htmlFor="follow-redirects">Follow Redirects</Label>
+    </div>
+  </>
+)}
+
               </div>
             </div>
           )}

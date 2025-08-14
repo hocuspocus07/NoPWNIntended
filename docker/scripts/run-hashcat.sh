@@ -5,9 +5,7 @@ HASH="$1"
 HASH_TYPE="$2"
 WORDLIST="$3"
 ATTACK_MODE="$4"
-RULES_FILE="$5"
 WORKLOAD="${6:-3}"
-USE_POTFILE="${7:-false}"
 
 # Create temp file for hash
 TEMP_HASH_FILE="/tmp/hashcat_input.txt"
@@ -94,13 +92,6 @@ CMD=(
   -w "$WORKLOAD"
 )
 
-if [[ -n "$RULES_FILE" && "$RULES_FILE" != "-" && -f "$RULES_FILE" ]]; then
-  CMD+=(-r "$RULES_FILE")
-fi
-
-if [[ "${USE_POTFILE,,}" == "true" ]]; then
-  CMD+=(--potfile-path "hashcat-$(date +%s).potfile")
-fi
 
 # CORRECT ORDER: hashfile, then wordlist
 CMD+=("$TEMP_HASH_FILE" "$WORDLIST_PATH")

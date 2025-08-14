@@ -21,9 +21,7 @@ export async function runHashcat(
   hashType: HashType,
   wordlist: string,
   attackMode: AttackMode,
-  rulesFile: string = "",
   workload: WorkloadProfile = "3",
-  usePotfile: boolean = false
 ): Promise<string> {
   const container = process.env.NEXT_PUBLIC_CONTAINER_NAME;
   if(!container)return "no container"
@@ -33,9 +31,7 @@ export async function runHashcat(
     hashType,
     wordlist,
     attackMode,
-    rulesFile || "-",
     workload,
-    usePotfile ? "true" : "false",
   ];
 
   return new Promise((resolve, reject) => {

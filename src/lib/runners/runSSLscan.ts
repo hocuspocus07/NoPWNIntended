@@ -13,7 +13,6 @@ export async function runSSLscan(
     heartbleed?: boolean;
     compression?: boolean;
     fallback?: boolean;
-    signatures?: boolean;
   } = {}
 ) {
   const container = process.env.NEXT_PUBLIC_CONTAINER_NAME;
@@ -27,7 +26,6 @@ export async function runSSLscan(
       options.heartbleed?.toString() || 'false',
       options.compression?.toString() || 'false',
       options.fallback?.toString() || 'false',
-      options.signatures?.toString() || 'false'
     ].join(' ');
 
     const { stdout } = await asyncExec(

@@ -35,18 +35,30 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    const output = await runExifTool(buffer, {
-      outputFormat: outputFormat as any,
-      groupNames,
-      binaryOutput,
-      showAllTags,
-      showCommonTags,
-      specificTags,
-      geotagsOnly,
-      removeMetadata,
-    })
+    const result = await runExifTool(
+      buffer,
+      {
+        outputFormat: outputFormat as any,
+        groupNames,
+        binaryOutput,
+        showAllTags,
+        showCommonTags,
+        specificTags,
+        geotagsOnly,
+        removeMetadata,
+      },
+      file.name,
+    )
 
-    return NextResponse.json({ output })
+    return NextResponse.json({
+      output: result.output,
+      files: result.files?.map((file) => ({
+        name: file.name,
+        type: file.mimeType.startsWith("image/") ? "image" : file.name.endsWith(".csv") ? "csv" : "text",
+        content: file.mimeType.startsWith("image/") ? file.content.toString("base64") : file.content.toString(),
+        size: file.size,
+      })),
+    })
   } catch (err: any) {
     console.error("ExifTool API: Error processing request:", err)
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 })

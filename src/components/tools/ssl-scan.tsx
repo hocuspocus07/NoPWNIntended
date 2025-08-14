@@ -23,14 +23,6 @@ const { startExecution, completeExecution } = useToolTracking()
 const [target, setTarget] = useState("")
 const [options, setOptions] = useState({
   startTls: "none" as "none" | "smtp" | "ftp" | "imap" | "pop3" | "ldap",
-  tlsVersions: {
-    ssl2: false,
-    ssl3: false,
-    tls10: false,
-    tls11: false,
-    tls12: true,
-    tls13: true
-  },
   scanOpts: {
     showCertificates: false,
     checkHeartbleed: true,
@@ -58,17 +50,10 @@ useEffect(() => {
     try {
       let commandString = `sslscan ${target}`
       if (options.startTls !== "none") commandString += ` --starttls=${options.startTls}`
-      if (options.tlsVersions.ssl2) commandString += ` --ssl2`
-      if (options.tlsVersions.ssl3) commandString += ` --ssl3`
-      if (options.tlsVersions.tls10) commandString += ` --tls10`
-      if (options.tlsVersions.tls11) commandString += ` --tls11`
-      if (options.tlsVersions.tls12) commandString += ` --tls12`
-      if (options.tlsVersions.tls13) commandString += ` --tls13`
-      if (options.scanOpts.showCertificates) commandString += ` --show-certs`
-      if (options.scanOpts.checkHeartbleed) commandString += ` --heartbleed`
-      if (options.scanOpts.checkCompression) commandString += ` --compression`
-      if (options.scanOpts.checkFallback) commandString += ` --fallback`
-      if (options.scanOpts.showSigs) commandString += ` --show-sigs`
+      if (options.scanOpts.showCertificates) commandString += ` -S`
+      if (options.scanOpts.checkHeartbleed) commandString += ` -H`
+      if (options.scanOpts.checkCompression) commandString += ` -C`
+      if (options.scanOpts.checkFallback) commandString += ` -Z`
 
       executionId = await startExecution({
         tool: "SSLScan",
@@ -91,7 +76,6 @@ useEffect(() => {
             heartbleed: options.scanOpts.checkHeartbleed,
             compression: options.scanOpts.checkCompression,
             fallback: options.scanOpts.checkFallback,
-            signatures: options.scanOpts.showSigs
           }
         })
       })
@@ -139,15 +123,6 @@ const startTlsProtocols = [
   { value: "ldap", label: "LDAP" }
 ]
 
-const handleTlsVersionChange = (version: keyof typeof options.tlsVersions) => {
-  setOptions(prev => ({
-    ...prev,
-    tlsVersions: {
-      ...prev.tlsVersions,
-      [version]: !prev.tlsVersions[version]
-    }
-  }))
-}
 
 const handleScanOptionChange = (option: keyof typeof options.scanOpts) => {
   setOptions(prev => ({
@@ -219,59 +194,6 @@ return (
         
         {advancedOpen && (
           <div className="rounded-md border p-4 space-y-4">
-            <div className="space-y-2">
-              <Label>TLS Versions</Label>
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="ssl2"
-                    checked={options.tlsVersions.ssl2}
-                    onCheckedChange={() => handleTlsVersionChange("ssl2")}
-                  />
-                  <Label htmlFor="ssl2">SSLv2</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="ssl3"
-                    checked={options.tlsVersions.ssl3}
-                    onCheckedChange={() => handleTlsVersionChange("ssl3")}
-                  />
-                  <Label htmlFor="ssl3">SSLv3</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="tls10"
-                    checked={options.tlsVersions.tls10}
-                    onCheckedChange={() => handleTlsVersionChange("tls10")}
-                  />
-                  <Label htmlFor="tls10">TLS 1.0</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="tls11"
-                    checked={options.tlsVersions.tls11}
-                    onCheckedChange={() => handleTlsVersionChange("tls11")}
-                  />
-                  <Label htmlFor="tls11">TLS 1.1</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="tls12"
-                    checked={options.tlsVersions.tls12}
-                    onCheckedChange={() => handleTlsVersionChange("tls12")}
-                  />
-                  <Label htmlFor="tls12">TLS 1.2</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="tls13"
-                    checked={options.tlsVersions.tls13}
-                    onCheckedChange={() => handleTlsVersionChange("tls13")}
-                  />
-                  <Label htmlFor="tls13">TLS 1.3</Label>
-                </div>
-              </div>
-            </div>
             
             <div className="space-y-2">
               <Label>Scan Options</Label>
@@ -307,14 +229,6 @@ return (
                     onCheckedChange={() => handleScanOptionChange("checkFallback")}
                   />
                   <Label htmlFor="fallback">Check Fallback</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="show-sigs"
-                    checked={options.scanOpts.showSigs}
-                    onCheckedChange={() => handleScanOptionChange("showSigs")}
-                  />
-                  <Label htmlFor="show-sigs">Show Signatures</Label>
                 </div>
               </div>
             </div>

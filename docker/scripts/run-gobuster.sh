@@ -60,13 +60,6 @@ CMD=(
   --no-color     # Disable colors for cleaner parsing
 )
 
-if [[ -n "$EXTENSIONS" ]]; then
-  CMD+=(-x "$EXTENSIONS")
-fi
-
-if [[ "${FOLLOW_REDIRECTS,,}" == "true" ]]; then
-  CMD+=(-r)
-fi
 
 timeout 300 "${CMD[@]}" 2>&1 || {
     exit_code=$?

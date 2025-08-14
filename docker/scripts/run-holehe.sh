@@ -5,12 +5,39 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
-CMD="holehe"
+EMAIL="$1"
+ONLY_USED="$2"
+VERBOSE="$3"
+TIMEOUT="$4"
+EXCLUDE="$5"
+OUTPUT_FORMAT="$6"
 
-if [ "$2" = "true" ]; then CMD="$CMD --only-used"; fi
-if [ "$3" = "true" ]; then CMD="$CMD --verbose"; fi
-if [ "$4" != "5" ]; then CMD="$CMD --timeout $4"; fi
-if [ -n "$5" ]; then CMD="$CMD --exclude $5"; fi
-if [ "$6" != "text" ]; then CMD="$CMD --output-format $6"; fi
-
-$CMD "$1"
+if [ "$OUTPUT_FORMAT" = "csv" ]; then
+  TIMESTAMP=$(date +%s)
+  OUTPUT_FILE="holehe_${TIMESTAMP}_${EMAIL}_results.csv"
+  
+  CMD="holehe -C"
+  if [ "$ONLY_USED" = "true" ]; then CMD="$CMD --only-used"; fi
+  if [ "$VERBOSE" = "true" ]; then CMD="$CMD --verbose"; fi
+  if [ "$TIMEOUT" != "5" ]; then CMD="$CMD --timeout $TIMEOUT"; fi
+  if [ -n "$EXCLUDE" ]; then CMD="$CMD --exclude $EXCLUDE"; fi
+  
+  $CMD "$EMAIL" > "$OUTPUT_FILE" 2>&1
+  
+  if [ -f "$OUTPUT_FILE" ] && [ -s "$OUTPUT_FILE" ]; then
+    cat "$OUTPUT_FILE"
+    rm -f "$OUTPUT_FILE"
+  else
+    echo "Error: Failed to generate CSV output" >&2
+    exit 1
+  fi
+else
+  # Regular text or JSON output
+  CMD="holehe"
+  if [ "$ONLY_USED" = "true" ]; then CMD="$CMD --only-used"; fi
+  if [ "$VERBOSE" = "true" ]; then CMD="$CMD --verbose"; fi
+  if [ "$TIMEOUT" != "5" ]; then CMD="$CMD --timeout $TIMEOUT"; fi
+  if [ -n "$EXCLUDE" ]; then CMD="$CMD --exclude $EXCLUDE"; fi
+  
+  $CMD "$EMAIL"
+fi

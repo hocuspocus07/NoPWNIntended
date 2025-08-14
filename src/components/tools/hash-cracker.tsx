@@ -24,9 +24,7 @@ export function HashCracker({ onRegisterScan }: { onRegisterScan: (fn: () => Pro
     hashType: "auto",
     attackMode: "straight",
     wordlist: "rockyou",
-    rules: "",
     workload: "3",
-    potfile: false,
     customWordlist: ""
   })
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -52,19 +50,10 @@ export function HashCracker({ onRegisterScan }: { onRegisterScan: (fn: () => Pro
         commandString += ` ${selectedWordlist}`;
         parameters.wordlist = selectedWordlist;
       }
-      if (options.rules) {
-        commandString += ` -r ${options.rules}`;
-        parameters.rules = options.rules;
-      }
       if (options.workload !== "3") {
         commandString += ` -w ${options.workload}`;
         parameters.workload = options.workload;
       }
-      if (options.potfile) {
-        commandString += ` --potfile-disable`; 
-        parameters.potfile = options.potfile;
-      }
-
       try {
         executionId = await startExecution({
           tool: "HashCracker",
@@ -84,9 +73,7 @@ export function HashCracker({ onRegisterScan }: { onRegisterScan: (fn: () => Pro
             hashType: options.hashType,
             wordlist: options.wordlist === "custom" ? options.customWordlist : options.wordlist,
             attackMode: options.attackMode,
-            rulesFile: options.rules,
-            workload: options.workload,
-            usepotfile: options.potfile
+            workload: options.workload
           })
         })
 
@@ -268,15 +255,6 @@ export function HashCracker({ onRegisterScan }: { onRegisterScan: (fn: () => Pro
           {advancedOpen && (
             <div className="rounded-md border p-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="rules">Rules File (optional)</Label>
-                  <Input
-                    id="rules"
-                    placeholder="d3ad0ne.rule"
-                    value={options.rules}
-                    onChange={(e) => setOptions({...options, rules: e.target.value})}
-                  />
-                </div>
 
                 <div className="space-y-2">
                   <Label>Workload Profile</Label>
@@ -295,15 +273,6 @@ export function HashCracker({ onRegisterScan }: { onRegisterScan: (fn: () => Pro
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="potfile"
-                    checked={options.potfile}
-                    onCheckedChange={(checked) => setOptions({...options, potfile: checked})}
-                  />
-                  <Label htmlFor="potfile">Use Potfile</Label>
                 </div>
 
                 {options.attackMode === "brute" && (

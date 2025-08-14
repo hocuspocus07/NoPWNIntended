@@ -15,7 +15,7 @@ export async function POST(request:Request) {
           }
       
         const body=await request.json();
-        const scanResults=await runHashcat(body.hash,body.hashType,body.wordlist,body.attackMode,body.rulesFile,body.workload,body.usepotfile);
+        const scanResults=await runHashcat(body.hash,body.hashType,body.wordlist,body.attackMode,body.rulesFile);
         const unique = Array.from(new Set(scanResults.trim().split('\n'))).join('\n');
     if (!unique) {
       return NextResponse.json({
