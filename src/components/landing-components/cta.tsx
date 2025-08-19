@@ -2,8 +2,27 @@
 import Image from "next/image";
 import { Button } from "../ui/button";
 import { motion } from "framer-motion";
-
+import { useEffect, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
 export default function Cta() {
+  const [loggedIn, setIsLoggedIn] = useState(false);
+  const supabase = createClient();
+  useEffect(() => {
+    const getSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setIsLoggedIn(true);
+        } else {
+          setIsLoggedIn(false);
+        }
+      } catch (error) {
+        setIsLoggedIn(false);
+      }
+    }
+    getSession();
+  }
+)
   return (
     <section className="relative overflow-hidden">
       <div
@@ -37,7 +56,15 @@ export default function Cta() {
                 transition={{ duration: 0.5, delay: 0.3 }}
                 viewport={{ once: true }}
               >
-                <Button variant="outline" className="w-full font-inter">
+                <Button variant="outline" className="w-full font-inter" onClick={
+                  () => {
+                    if (loggedIn) {
+                      window.location.href = "/dashboard";
+                    } else {
+                      window.location.href = "/login";
+                    }
+                  }
+                }>
                   Get Started
                 </Button>
               </motion.div>

@@ -1,8 +1,27 @@
 "use client"
 import { Button } from "../ui/button";
 import { motion } from "framer-motion";
-
+import { useState,useEffect } from "react";
+import { createClient } from "@/utils/supabase/client";
 export default function HeroHome() {
+   const [loggedIn, setIsLoggedIn] = useState(false);
+    const supabase = createClient();
+    useEffect(() => {
+      const getSession = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            setIsLoggedIn(true);
+          } else {
+            setIsLoggedIn(false);
+          }
+        } catch (error) {
+          setIsLoggedIn(false);
+        }
+      }
+      getSession();
+    }
+  )
   return (
     <section>
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -26,7 +45,15 @@ export default function HeroHome() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: 0.3 }}
                 >
-                  <Button variant="outline" className="btn relative w-full">
+                  <Button variant="outline" className="btn relative w-full" onClick={
+                    ()=>{
+                      if(loggedIn){
+                        window.location.href="/dashboard";
+                      }else{
+                        window.location.href="/login";
+                      }
+                    }
+                  }>
                     <span className="font-inter">Get Started</span>
                   </Button>
                 </motion.div>

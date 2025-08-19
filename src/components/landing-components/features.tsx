@@ -48,7 +48,7 @@ export default function Features() {
             transition={{ duration: 0.7, delay: 0.2 }}
             viewport={{ once: true }}
           >
-            <Image src="/images/features.png" width={1104} height={384} alt="Features" />
+            <Image src="/images/hero-image-01.jpg" width={1104} height={384} alt="Features" />
           </motion.div>
           {/* Items */}
           <div className="mx-auto grid max-w-sm gap-12 sm:max-w-none sm:grid-cols-2 md:gap-x-14 md:gap-y-16 lg:grid-cols-3">
