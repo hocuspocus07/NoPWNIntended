@@ -18,7 +18,7 @@ interface ScanProgress {
 }
 
 export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: () => Promise<string>) => void }) {
-  const { startExecution, completeExecution } = useToolTracking() 
+  const { startExecution, completeExecution } = useToolTracking()
   const [url, setUrl] = useState("")
   const [options, setOptions] = useState({
     tool: "ffuf" as "ffuf" | "gobuster" | "dirsearch",
@@ -54,8 +54,13 @@ export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: 
 
       if (options.threads !== 40) commandString += ` -t ${options.threads}`
       if (options.extensions) commandString += ` -e ${options.extensions}`
-      if (options.recursive) commandString += ` -recursion`
-      if (options.followRedirects) commandString += ` -r`
+      
+      if ((options.tool === "ffuf" || options.tool === "dirsearch") && options.recursive) {
+        commandString += ` -recursion`
+      }
+      if ((options.tool === "ffuf" || options.tool === "dirsearch") && options.followRedirects) {
+        commandString += ` -r`
+      }
 
       try {
         executionId = await startExecution({
@@ -72,8 +77,10 @@ export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: 
           wordlist: options.wordlist,
           threads: options.threads,
           extensions: options.extensions,
-          recursive: options.recursive,
-          followRedirects: options.followRedirects,
+          ...(options.tool === "ffuf" || options.tool === "dirsearch" ? {
+            recursive: options.recursive,
+            followRedirects: options.followRedirects,
+          } : {}),
         }
 
         const response = await fetch(endpoint, {
@@ -98,14 +105,15 @@ export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: 
         }
 
         const result = await response.json()
-        const output = typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2)
+        const rawOutput = typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2)
 
         if (executionId) {
-          await completeExecution(executionId, output, duration, "completed", "")
+          await completeExecution(executionId, rawOutput, duration, "completed", "")
         }
 
+        const wrapped = JSON.stringify({ tool: "Directory Brute Force", output: rawOutput })
         setIsLoading(false)
-        return output
+        return wrapped
       } catch (err) {
         const errorMessage = (err as { message?: string })?.message || "Unknown error"
         if (executionId) {
@@ -196,7 +204,6 @@ export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: 
           </div>
         </div>
 
-        {/* Progress Bar */}
         {isLoading && progress && (
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-muted-foreground">
@@ -256,37 +263,44 @@ export function DirectoryBruteForcer({ onRegisterScan }: { onRegisterScan: (fn: 
                 </div>
 
                 {(options.tool === "ffuf" || options.tool === "dirsearch") && (
-  <>
-    <div className="flex items-center space-x-2">
-      <Switch
-        id="recursive"
-        checked={options.recursive}
-        onCheckedChange={(checked) =>
-          setOptions({
-            ...options,
-            recursive: checked,
-          })
-        }
-      />
-      <Label htmlFor="recursive">Recursive Scan</Label>
-    </div>
+                  <>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="recursive"
+                        checked={options.recursive}
+                        onCheckedChange={(checked) =>
+                          setOptions({
+                            ...options,
+                            recursive: checked,
+                          })
+                        }
+                      />
+                      <Label htmlFor="recursive">Recursive Scan</Label>
+                    </div>
 
-    <div className="flex items-center space-x-2">
-      <Switch
-        id="follow-redirects"
-        checked={options.followRedirects}
-        onCheckedChange={(checked) =>
-          setOptions({
-            ...options,
-            followRedirects: checked,
-          })
-        }
-      />
-      <Label htmlFor="follow-redirects">Follow Redirects</Label>
-    </div>
-  </>
-)}
-
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="follow-redirects"
+                        checked={options.followRedirects}
+                        onCheckedChange={(checked) =>
+                          setOptions({
+                            ...options,
+                            followRedirects: checked,
+                          })
+                        }
+                      />
+                      <Label htmlFor="follow-redirects">Follow Redirects</Label>
+                    </div>
+                  </>
+                )}
+                
+                {options.tool === "gobuster" && (
+                  <div className="col-span-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      ℹ️ GoBuster doesn't support recursive scanning. Use FFUF or Dirsearch for recursive directory discovery.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

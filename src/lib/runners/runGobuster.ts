@@ -30,18 +30,25 @@ export async function runGoBuster(
     }
   }
 
+  // Clean and validate extensions
+  const cleanExtensions = extensions.replace(/[^a-zA-Z0-9,]/g, "") || "none"
+  
   const args = [
     url,
     wordlist,
     Math.max(1, Math.min(threads, 100)).toString(),
-    extensions.replace(/[^a-zA-Z0-9,]/g, "") || "none",
+    cleanExtensions,
   ]
 
   console.log("DEBUG: Executing Gobuster with args:", args.join(" "));
+  console.log("DEBUG: Extensions parameter:", cleanExtensions);
 
   try {
+    const dockerCommand = `docker exec ${container} /docker/scripts/run-gobuster.sh ${args.join(" ")}`
+    console.log("DEBUG: Docker command:", dockerCommand);
+    
     const { stdout, stderr } = await asyncExec(
-      `docker exec ${container} /docker/scripts/run-gobuster.sh ${args.join(" ")}`,
+      dockerCommand,
       {
         maxBuffer: 1024 * 1024 * 10,
       },

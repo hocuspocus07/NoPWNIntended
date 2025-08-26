@@ -2,14 +2,21 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { Copy, Loader2, Download, FileText, ImageIcon, Eye } from "lucide-react"
+import { Copy, Loader2, Download, FileText, ImageIcon, Eye, BarChart3 } from "lucide-react"
 import { toast } from "sonner"
 import { useEffect, useState } from "react"
 import { Progress } from "@/components/ui/progress"
 import { SubdomainResults } from "./subdomain-results"
 import PcapResults from "./pcap-results"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { VisualNmapResults } from "./results/nmap-result"
+import { VisualExifToolResults } from "./results/exiftool-results"
+import { VisualSherlockResults } from "./results/sherlock-results"
+import { VisualHoleheResults } from "./results/holehe-results"
+import { VisualWhoisResults } from "./results/whois-result"
+import { VisualSSLResults } from "./results/ssl-results"
+import { VisualDirectoryResults } from "./results/directory-results"
 interface ParsedOutput {
   output?: string
   reportContent?: string
@@ -170,6 +177,7 @@ export function OutputPanel({
     message: string
   } | null>(null)
   const [pcapData, setPcapData] = useState<any>(null)
+  const [toolType, setToolType] = useState<string>("")
 
   useEffect(() => {
     setIsHtmlContent(false)
@@ -177,11 +185,13 @@ export function OutputPanel({
     setPcapData(null)
     setProgress(null)
     setParsedOutput(null)
+    setToolType("")
 
     if (output) {
       try {
         const parsed = JSON.parse(output)
         setParsedOutput(parsed)
+        setToolType(parsed.tool || "")
 
         if (parsed.progress) {
           setProgress(parsed.progress)
@@ -202,6 +212,33 @@ export function OutputPanel({
           setPcapData(parsed)
         }
       } catch {
+        const lowerOutput = output.toLowerCase()
+        if (lowerOutput.includes("nmap scan report") || lowerOutput.includes("starting nmap")) {
+          setToolType("Nmap")
+        } else if (lowerOutput.includes("domain name:") || lowerOutput.includes("registrar:")) {
+          setToolType("WHOIS")
+        } else if (lowerOutput.includes("sslscan") || lowerOutput.includes("ssl/tls")) {
+          setToolType("SSLScan")
+        } else if (lowerOutput.includes("exiftool") || lowerOutput.includes("metadata")) {
+          setToolType("ExifTool")
+        } else if (
+          lowerOutput.includes("ffuf") ||
+          lowerOutput.includes("gobuster") ||
+          lowerOutput.includes("dirsearch")
+        ) {
+          setToolType("Directory Brute Force")
+        } else if (
+          lowerOutput.includes("holehe") ||
+          (lowerOutput.includes("email") && (lowerOutput.includes("[+]") || lowerOutput.includes("[-]")))
+        ) {
+          setToolType("Holehe")
+        } else if (
+          lowerOutput.includes("sherlock") ||
+          (lowerOutput.includes("username") && (lowerOutput.includes("[+]") || lowerOutput.includes("[-]")))
+        ) {
+          setToolType("Sherlock")
+        }
+
         const lines = output.split("\n")
         const progressLines = lines.filter((line) => line.includes("PROGRESS:"))
 
@@ -241,6 +278,16 @@ export function OutputPanel({
     URL.revokeObjectURL(url)
     toast("Results downloaded")
   }
+
+  const shouldShowVisualResults =
+    (toolType === "Nmap" ||
+      toolType === "WHOIS" ||
+      toolType === "SSLScan" ||
+      toolType === "ExifTool" ||
+      toolType === "Directory Brute Force" ||
+      toolType === "Holehe" ||
+      toolType === "Sherlock") &&
+    parsedOutput?.output
 
   return (
     <div className="h-full flex flex-col overflow-hidden text-foreground">
@@ -318,6 +365,50 @@ export function OutputPanel({
                 <PcapResults results={pcapData} />
               ) : subdomainData ? (
                 <SubdomainResults results={subdomainData.subdomains} initialMessage={subdomainData.message} />
+              ) : shouldShowVisualResults ? (
+                <Tabs defaultValue="visual" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="visual" className="flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4" />
+                      Visual Results
+                    </TabsTrigger>
+                    <TabsTrigger value="raw" className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Raw Output
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="visual" className="mt-4">
+                    {toolType === "Nmap" && <VisualNmapResults rawOutput={parsedOutput?.output || ""} />}
+                    {toolType === "WHOIS" && <VisualWhoisResults rawOutput={parsedOutput?.output || ""} />}
+                    {toolType === "SSLScan" && (
+                      <VisualSSLResults result={{ tool: "SSLScan", output: parsedOutput?.output || "" }} />
+                    )}
+                    {toolType === "ExifTool" && (
+  <VisualExifToolResults
+    result={{ 
+      output: parsedOutput?.output || "", 
+      files: parsedOutput?.files?.map(file => ({
+        name: file.name,
+        url: file.downloadUrl || "", 
+        type: file.type
+      }))
+    }}
+  />
+)}
+                    {toolType === "Directory Brute Force" && (
+                      <VisualDirectoryResults result={{ output: parsedOutput?.output || "" }} />
+                    )}
+                    {toolType === "Holehe" && <VisualHoleheResults result={{ output: parsedOutput?.output || "" }} />}
+                    {toolType === "Sherlock" && (
+                      <VisualSherlockResults result={{ output: parsedOutput?.output || "" }} />
+                    )}
+                  </TabsContent>
+                  <TabsContent value="raw" className="mt-4">
+                    <pre className="font-mono text-sm whitespace-pre-wrap break-words bg-muted p-4 rounded-lg">
+                      {parsedOutput?.output}
+                    </pre>
+                  </TabsContent>
+                </Tabs>
               ) : isHtmlContent && parsedOutput?.output ? (
                 <div
                   className="font-mono text-sm whitespace-pre-wrap break-words ssl-output"

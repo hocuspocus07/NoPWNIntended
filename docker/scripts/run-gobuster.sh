@@ -7,9 +7,7 @@ URL=$1
 WORDLIST=$2
 THREADS=$3
 EXTENSIONS=$4
-FOLLOW_REDIRECTS=$5
 
-# Check if gobuster is installed
 if ! command -v gobuster &> /dev/null; then
     echo "ERROR: Gobuster is not installed or not in PATH"
     echo "Install with: apt update && apt install -y gobuster"
@@ -56,10 +54,20 @@ CMD=(
   -u "$URL"
   -w "$WORDLIST_PATH"
   -t "$THREADS"
-  --no-progress  # Disable progress bar for cleaner output
-  --no-color     # Disable colors for cleaner parsing
+  --no-progress 
+  --no-color    
 )
 
+if [[ "$EXTENSIONS" != "none" && -n "$EXTENSIONS" ]]; then
+  echo "DEBUG: Adding extensions: $EXTENSIONS"
+  CMD+=(--extensions "$EXTENSIONS")
+else
+  echo "DEBUG: No extensions specified"
+fi
+
+
+echo "DEBUG: Running command: ${CMD[*]}"
+echo "DEBUG: Command array: ${CMD[@]}"
 
 timeout 300 "${CMD[@]}" 2>&1 || {
     exit_code=$?

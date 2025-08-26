@@ -100,8 +100,9 @@ useEffect(() => {
         await completeExecution(executionId, output, duration, "completed", "")
       }
 
+      // Return a wrapper the OutputPanel detects as visual; keep raw too
       setIsLoading(false)
-      return JSON.stringify({ tool: "SSLScan", output: ansiToHtml(output) });
+      return JSON.stringify({ tool: "SSLScan", output });
     } catch (err) {
       const errorMessage = (err as { message?: string })?.message || "Unknown error"
       if (executionId) {
